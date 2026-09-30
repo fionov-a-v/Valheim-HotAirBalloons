@@ -15,5 +15,6 @@
     <Compile Include="../../src/Visuals/MediumBalloonModel.cs" Link="Mod/MediumBalloonModel.cs" />
     <Compile Include="../../src/Visuals/SailFold.cs" Link="Mod/SailFold.cs" />
     <Compile Include="../../src/Visuals/DrakkarModel.cs" Link="Mod/DrakkarModel.cs" />
+    <Compile Include="../../src/Visuals/RopeLadder.cs" Link="Mod/RopeLadder.cs" />
   </ItemGroup>
 </Project>

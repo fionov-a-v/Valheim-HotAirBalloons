@@ -108,6 +108,12 @@ namespace HotAirBalloons.Visuals
         public Vector3 TillerColliderCenter;
         public Vector3 TillerColliderSize;
 
+        /// <summary>
+        /// Верёвочный трап снаружи (слева спереди, между скамьёй и креплением левого паруса — паруса при повороте
+        /// его не задевают): [E] — и вы в кадке, в том числе из воды.
+        /// </summary>
+        public LadderSpec Ladder;
+
         public Vector3 AnchorRopeStart;
         public Vector3 AnchorOutward;
 
@@ -133,6 +139,7 @@ namespace HotAirBalloons.Visuals
             m.BuildTiller();
             m.BuildSail(0, 1f);
             m.BuildSail(1, -1f);
+            m.BuildLadder();
             m.BuildColliders();
             return m;
         }
@@ -648,6 +655,13 @@ namespace HotAirBalloons.Visuals
                 Center = new Vector3(LeverPivot.x, (FloorTop + LeverPivot.y) * 0.5f, LeverPivot.z),
                 Size = new Vector3(0.14f, LeverPivot.y - FloorTop, 0.14f),
             });
+        }
+
+        private void BuildLadder()
+        {
+            const float angle = -72f;
+            Ladder = RopeLadder.Build(Rope, Wood, angle, BandOuter + 0.02f, RimTop + 0.02f, 0.08f, 0.42f,
+                Dir(angle) * 0.9f + Vector3.up * (FloorTop + 0.05f));
         }
 
         private static Vector3 Dir(float angleDeg)

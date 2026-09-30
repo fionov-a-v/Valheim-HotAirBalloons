@@ -709,6 +709,8 @@ namespace HotAirBalloons
             burner.m_fuelAddedEffects = FuelEffects(brazierPrefab);
             ctrl.m_burner = burner;
 
+            AddLadder(t, model.Ladder, "Ladder");
+
             var anchorParts = new Parts();
             BuildAnchor(t, L, ctrl, anchorParts, model.AnchorRopeStart, model.AnchorOutward);
             AddMesh(t, "AnchorDrum", anchorParts.Wood, s_wood);
@@ -911,6 +913,8 @@ namespace HotAirBalloons
             ctrl.m_rudderPivots = pivots.ToArray();
             ctrl.m_rudderVisualAngle = 30f;
 
+            AddLadder(t, model.Ladder, "Ladder");
+
             var anchorParts = new Parts();
             BuildAnchor(t, L, ctrl, anchorParts, model.AnchorRopeStart, model.AnchorOutward);
             AddMesh(t, "AnchorDrum", anchorParts.Wood, s_wood);
@@ -1062,17 +1066,10 @@ namespace HotAirBalloons
             }
             ctrl.m_crankSeats = seats.ToArray();
 
-            // Трапы по бортам (ванильная лестница корабля: [E] — и вы на палубе): борт выше, чем допрыгнуть.
-            int ladder = 0;
-            foreach (LadderSpec spec in model.Ladders)
+            // Трапы по бортам: борт выше, чем допрыгнуть.
+            for (int i = 0; i < model.Ladders.Count; i++)
             {
-                GameObject go = AddChild(t, "Ladder" + ladder, spec.Center, Quaternion.Euler(0f, spec.Yaw, 0f), s_nonSolidLayer);
-                go.AddComponent<BoxCollider>().size = spec.Size;
-                GameObject target = AddChild(t, "LadderTarget" + ladder++, spec.Target, Quaternion.Euler(0f, spec.TargetYaw, 0f), s_nonSolidLayer);
-                Ladder lad = go.AddComponent<Ladder>();
-                lad.m_targetPos = target.transform;
-                lad.m_name = "$piece_ship_ladder";
-                lad.m_useDistance = 3.5f;
+                AddLadder(t, model.Ladders[i], "Ladder" + i);
             }
 
             // Сундук на 8 ячеек у носа, лицом к корме (поменьше, чтобы уместился в узком носу).
@@ -1081,6 +1078,21 @@ namespace HotAirBalloons
             var anchorParts = new Parts();
             BuildAnchor(t, L, ctrl, anchorParts, model.AnchorRopeStart, model.AnchorOutward);
             AddMesh(t, "AnchorDrum", anchorParts.Wood, s_wood);
+        }
+
+        /// <summary>
+        /// Трап — ванильная лестница корабля: [E] на нём переносит на борт, в точку target. Дальность — с запасом,
+        /// чтобы дотянуться и вплавь (у плывущего точка отсчёта глубоко под водой).
+        /// </summary>
+        private static void AddLadder(Transform root, LadderSpec spec, string name)
+        {
+            GameObject go = AddChild(root, name, spec.Center, Quaternion.Euler(0f, spec.Yaw, 0f), s_nonSolidLayer);
+            go.AddComponent<BoxCollider>().size = spec.Size;
+            GameObject target = AddChild(root, name + "Target", spec.Target, Quaternion.Euler(0f, spec.TargetYaw, 0f), s_nonSolidLayer);
+            Ladder ladder = go.AddComponent<Ladder>();
+            ladder.m_targetPos = target.transform;
+            ladder.m_name = "$piece_ship_ladder";
+            ladder.m_useDistance = 3.5f;
         }
 
         private static GameObject AddSharedMesh(Transform parent, string name, Mesh mesh, Material material)

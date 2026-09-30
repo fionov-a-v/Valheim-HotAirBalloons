@@ -51,6 +51,9 @@ namespace HotAirBalloons.Visuals
         public Vector3 BurnerColliderCenter;
         public Vector3 BurnerColliderSize;
 
+        /// <summary>Верёвочный трап снаружи (сзади слева, между стропами): [E] — и вы в корзине, в том числе из воды.</summary>
+        public LadderSpec Ladder;
+
         public Vector3 AnchorRopeStart;
         public Vector3 AnchorOutward;
 
@@ -68,6 +71,7 @@ namespace HotAirBalloons.Visuals
             m.BuildNet();
             m.BuildSuspension();
             m.BuildBurner();
+            m.BuildLadder();
             m.BuildColliders();
             return m;
         }
@@ -292,6 +296,13 @@ namespace HotAirBalloons.Visuals
                     Yaw = a,
                 });
             }
+        }
+
+        private void BuildLadder()
+        {
+            const float angle = 202.5f;
+            Ladder = RopeLadder.Build(Rope, Wood, angle, BasketRadius + 0.02f, BasketTop + 0.04f, 0.08f, 0.38f,
+                Dir(angle) * 0.4f + Vector3.up * (FloorTop + 0.05f));
         }
 
         private static Vector3 Dir(float angleDeg)
