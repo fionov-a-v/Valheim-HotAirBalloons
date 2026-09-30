@@ -1,0 +1,10 @@
+{
+    "name": "HotAirBalloons",
+    "version_number": "1.3.0",
+    "website_url": "https://github.com/fionov-a-v/Valheim-HotAirBalloons",
+    "description": "Three hot air balloons: fly with the wind, control altitude with fire, anchor, rudder, side sails, load capacity.",
+    "dependencies": [
+        "denikson-BepInExPack_Valheim-5.4.2351",
+        "ValheimModding-Jotunn-2.30.2"
+    ]
+}
