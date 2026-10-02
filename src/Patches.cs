@@ -1,4 +1,5 @@
 using HarmonyLib;
+using UnityEngine;
 
 namespace HotAirBalloons
 {
@@ -82,7 +83,7 @@ namespace HotAirBalloons
             Player player = Player.m_localPlayer;
             if (player != null && BalloonController.FindOnboard(player) != null)
             {
-                __instance.m_maxDistance = UnityEngine.Mathf.Max(__instance.m_maxDistance, __instance.m_maxDistanceBoat);
+                __instance.m_maxDistance = Mathf.Max(__instance.m_maxDistance, __instance.m_maxDistanceBoat);
             }
         }
 

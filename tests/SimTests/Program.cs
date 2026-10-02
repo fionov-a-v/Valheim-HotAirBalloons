@@ -125,7 +125,7 @@ namespace HotAirBalloons.Tests
                 w.I.BottomY = 50f;
                 float maxSink = 0f;
                 w.Run(40f, x => maxSink = Math.Max(maxSink, -x.I.VVel));
-                Check("вниз: огонь погашен, посадка 4 м/с", w.I.BottomY < 0.01f && Math.Abs(maxSink - 4f) < 0.01f, $"y={w.I.BottomY:0.00} maxSink={maxSink:0.00}");
+                Check("вниз: огонь погашен, посадка 3 м/с", w.I.BottomY < 0.01f && Math.Abs(maxSink - 3f) < 0.01f, $"y={w.I.BottomY:0.00} maxSink={maxSink:0.00}");
             }
             {
                 var w = new World(Medium());
@@ -411,6 +411,31 @@ namespace HotAirBalloons.Tests
                 w.Run(40f, x => minY = Math.Min(minY, x.I.BottomY));
                 Check("садится на воду и держится", Math.Abs(w.I.BottomY) < 0.1f && minY > -0.3f, $"y={w.I.BottomY:0.00} min={minY:0.00}");
                 Check("на воде дрейфует", w.I.Pos.X > 50f, $"x={w.I.Pos.X:0}");
+            }
+            {
+                var w = new World(Medium());
+                w.Terrain = _ => -20f;
+                w.Water = 0f;
+                w.I.Mode = BurnMode.Hold;
+                w.Run(20f);
+                Check("на воде вдвое медленнее: 6 / 2 = 3 м/с", Math.Abs(w.I.HVel.X - 3f) < 0.05f && Math.Abs(w.I.BottomY) < 0.01f, $"v={w.I.HVel} y={w.I.BottomY:0.00}");
+                w.I.Sails = SailLevel.Full;
+                w.Run(20f);
+                Check("на воде полные паруса: 6 x 2 / 2 = 6 м/с", Math.Abs(w.I.HVel.X - 6f) < 0.05f, $"v={w.I.HVel}");
+                w.I.Mode = BurnMode.Up;
+                w.Run(25f);
+                Check("взлетел с воды — снова x2 от ветра: 12 м/с", w.Agl > 5f && Math.Abs(w.I.HVel.X - 12f) < 0.05f, $"agl={w.Agl:0.0} v={w.I.HVel}");
+            }
+            {
+                var w = new World(Drakkar());
+                w.Terrain = _ => -20f;
+                w.Water = 0f;
+                w.I.WindDir = V2.Zero;
+                w.I.Mode = BurnMode.Hold;
+                w.I.Cranks = 4;
+                w.Run(30f);
+                Check("на воде и винт вдвое слабее: четверо в штиль — 24 / 2 = 12 м/с", Math.Abs(w.I.HVel.Z - 12f) < 0.05f && Math.Abs(w.I.HVel.X) < 0.01f,
+                    $"v={w.I.HVel}");
             }
             {
                 var w = new World(Medium());

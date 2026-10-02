@@ -359,7 +359,7 @@ namespace HotAirBalloons
             body.angularDamping = 0.5f;
             body.interpolation = RigidbodyInterpolation.Interpolate;
             body.collisionDetectionMode = CollisionDetectionMode.Discrete;
-            body.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+            body.constraints = BalloonController.UprightConstraints;
 
             ZSyncTransform sync = root.AddComponent<ZSyncTransform>();
             sync.m_syncPosition = true;
@@ -399,10 +399,14 @@ namespace HotAirBalloons
             if (karveWear != null)
             {
                 wear.m_hitEffect = karveWear.m_hitEffect;
-                wear.m_destroyedEffect = karveWear.m_destroyedEffect;
-                wear.m_switchEffect = karveWear.m_switchEffect;
                 wear.m_damages = karveWear.m_damages;
             }
+            // Разбитый шар просто рассыпается на ресурсы (их роняет сам WearNTear): у карви в эффекте разрушения
+            // ещё и падающий остов корабля, поэтому берём пыль и треск деревянной постройки.
+            GameObject woodFloor = PrefabManager.Instance.GetPrefab("wood_floor");
+            WearNTear woodWear = woodFloor != null ? woodFloor.GetComponent<WearNTear>() : null;
+            wear.m_destroyedEffect = WithoutDebris(woodWear != null ? woodWear.m_destroyedEffect : null,
+                karveWear != null ? karveWear.m_destroyedEffect : null);
 
             BalloonController ctrl = root.AddComponent<BalloonController>();
             ctrl.m_kind = kind;
@@ -475,6 +479,24 @@ namespace HotAirBalloons
         // ------------------------------------------------------------------ общие части
 
         /// <summary>Место на скамье: Chair (посадка как на корабле) без своей доски — доска уже есть в модели.</summary>
+        /// <summary>
+        /// Сиденье с рукоятью — не ванильный стул, а место управления (как у руля): сидя, W/S — крутить или нет,
+        /// встать — [E] или прыжок. Размеры и поза — как у обычного сиденья.
+        /// </summary>
+        private static BalloonCrankSeat AddCrankSeat(Transform root, int index, Vector3 floorPos, float yaw, Transform crank)
+        {
+            GameObject go = AddChild(root, "CrankSeat" + index, floorPos, Quaternion.Euler(0f, yaw, 0f), s_nonSolidLayer);
+            BoxCollider box = go.AddComponent<BoxCollider>();
+            box.center = new Vector3(0f, 0.47f, 0f);
+            box.size = new Vector3(0.5f, 0.2f, 0.45f);
+            GameObject attach = AddChild(go.transform, "attach", new Vector3(0f, 0.02f, 0f), Quaternion.identity, s_nonSolidLayer);
+            BalloonCrankSeat seat = go.AddComponent<BalloonCrankSeat>();
+            seat.m_index = index;
+            seat.m_crank = crank;
+            seat.m_attachPoint = attach.transform;
+            return seat;
+        }
+
         private static Chair AddChair(Transform root, string name, Vector3 floorPos, float yaw, float width = 0.5f)
         {
             GameObject seat = AddChild(root, name, floorPos, Quaternion.Euler(0f, yaw, 0f), s_nonSolidLayer);
@@ -618,6 +640,38 @@ namespace HotAirBalloons
         {
             Fireplace fireplace = firePrefab != null ? firePrefab.GetComponent<Fireplace>() : null;
             return fireplace != null ? fireplace.m_fuelAddedEffects : new EffectList();
+        }
+
+        /// <summary>
+        /// Эффекты из первого списка, где они нашлись, — без обломков: всё, где есть меш или физика
+        /// (остов корабля, падающие доски), выкидываем, остаются частицы и звук.
+        /// </summary>
+        private static EffectList WithoutDebris(params EffectList[] sources)
+        {
+            var kept = new List<EffectList.EffectData>();
+            foreach (EffectList source in sources)
+            {
+                if (source == null || source.m_effectPrefabs == null)
+                {
+                    continue;
+                }
+                foreach (EffectList.EffectData effect in source.m_effectPrefabs)
+                {
+                    GameObject prefab = effect != null ? effect.m_prefab : null;
+                    if (prefab == null || prefab.GetComponentInChildren<MeshRenderer>(true) != null ||
+                        prefab.GetComponentInChildren<SkinnedMeshRenderer>(true) != null ||
+                        prefab.GetComponentInChildren<Rigidbody>(true) != null)
+                    {
+                        continue;
+                    }
+                    kept.Add(effect);
+                }
+                if (kept.Count > 0)
+                {
+                    break;
+                }
+            }
+            return new EffectList { m_effectPrefabs = kept.ToArray() };
         }
 
         // ------------------------------------------------------------------ простой шар
@@ -1054,15 +1108,10 @@ namespace HotAirBalloons
             for (int i = 0; i < model.Cranks.Count; i++)
             {
                 CrankSpec c = model.Cranks[i];
-                Chair chair = AddChair(t, "CrankSeat" + i, c.SeatPosition, c.SeatYaw);
-                chair.m_name = "$hab_crank_seat";
                 GameObject crank = AddChild(t, "Crank" + i, c.CrankPivot, c.CrankRotation, s_vehicleLayer);
                 AddSharedMesh(crank.transform, "Iron", crankIron, s_iron);
                 AddSharedMesh(crank.transform, "Wood", crankWood, s_wood);
-                BalloonCrankSeat seat = chair.gameObject.AddComponent<BalloonCrankSeat>();
-                seat.m_index = i;
-                seat.m_crank = crank.transform;
-                seats.Add(seat);
+                seats.Add(AddCrankSeat(t, i, c.SeatPosition, c.SeatYaw, crank.transform));
             }
             ctrl.m_crankSeats = seats.ToArray();
 

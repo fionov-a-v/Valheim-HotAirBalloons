@@ -7,6 +7,6 @@ dotnet build -c Release
 rm -rf dist/pkg && mkdir -p dist/pkg/plugins
 cp bin/Release/HotAirBalloons.dll dist/pkg/plugins/
 cp package/manifest.json package/icon.png README.md LICENSE.md dist/pkg/
-(cd dist/pkg && rm -f ../HotAirBalloons-1.3.0.zip && python3 -m zipfile -c ../HotAirBalloons-1.3.0.zip manifest.json icon.png README.md LICENSE.md plugins)
+(cd dist/pkg && rm -f ../HotAirBalloons-1.3.1.zip && python3 -m zipfile -c ../HotAirBalloons-1.3.1.zip manifest.json icon.png README.md LICENSE.md plugins)
 rm -rf dist/pkg
-echo "dist/HotAirBalloons-1.3.0.zip"
+echo "dist/HotAirBalloons-1.3.1.zip"

@@ -6,7 +6,8 @@ namespace HotAirBalloons
 {
     /// <summary>
     /// Панель шара для того, кто на нём находится (скорость, ветер, руль, паруса или винт, клавиши),
-    /// плюс отправка веса инвентаря локального игрока в его ZDO — по нему владелец шара считает груз.
+    /// плюс отправка в ZDO персонажа локального игрока веса инвентаря и того, крутит ли он рукоять, —
+    /// по ним владелец шара считает груз и гребцов.
     /// </summary>
     public class BalloonHud : MonoBehaviour
     {
@@ -20,7 +21,7 @@ namespace HotAirBalloons
         private void Update()
         {
             ReportLocalWeight();
-            ReportLocalCrankSeat();
+            BalloonCrankSeat.ReportLocal();
             m_refreshTimer -= Time.deltaTime;
             if (m_refreshTimer <= 0f)
             {
@@ -53,31 +54,6 @@ namespace HotAirBalloons
             if (Mathf.Abs(weight - stored) > 0.05f)
             {
                 nview.GetZDO().Set(BalloonController.s_playerInventoryWeight, weight);
-            }
-        }
-
-        /// <summary>
-        /// На каком сиденье с рукоятью сидит локальный игрок — в ZDO его персонажа: по этим меткам владелец шара
-        /// считает гребцов. Метка снимается, как только игрок встал (или сел куда-то ещё).
-        /// </summary>
-        private static void ReportLocalCrankSeat()
-        {
-            Player player = Player.m_localPlayer;
-            if (player == null)
-            {
-                return;
-            }
-            ZNetView nview = player.GetComponent<ZNetView>();
-            if (nview == null || !nview.IsValid() || !nview.IsOwner())
-            {
-                return;
-            }
-            Transform attach = player.IsAttached() ? player.GetAttachPoint() : null;
-            BalloonCrankSeat seat = attach != null ? attach.GetComponentInParent<BalloonCrankSeat>() : null;
-            int value = seat != null ? seat.m_index + 1 : 0;
-            if (nview.GetZDO().GetInt(BalloonController.s_playerCrankSeat) != value)
-            {
-                nview.GetZDO().Set(BalloonController.s_playerCrankSeat, value);
             }
         }
 
@@ -149,6 +125,11 @@ namespace HotAirBalloons
             {
                 return;
             }
+            BalloonCrankSeat crankSeat = station == null ? BalloonCrankSeat.GetSeat(player) : null;
+            if (crankSeat != null && crankSeat.Controller != b)
+            {
+                crankSeat = null;
+            }
 
             // Высота, груз и якорь — в правом блоке корабельного HUD (BalloonShipHud), огонь и топливо — там же
             // (иконка паруса) и на самом огне. Здесь — скорость, ветер, руль, паруса или винт и подсказка по клавишам.
@@ -167,9 +148,15 @@ namespace HotAirBalloons
                 float wind = BalloonConfig.WindSpeed.Value * Mathf.Lerp(0.25f, 1f, EnvMan.instance.GetWindIntensity());
                 m_sb.Append("   $hab_hud_wind: ").Append(wind.ToString("0.0")).Append(" $hab_unit_ms");
             }
+            // На плаву всё вдвое медленнее (WaterSpeedPercent) — и ветер, и паруса, и винт.
+            float waterFactor = b.IsOnWater() ? BalloonConfig.WaterSpeedPercent.Value / 100f : 1f;
             if (b.IsCalmHere())
             {
                 m_sb.Append(" ($hab_calm)");
+            }
+            else if (waterFactor < 1f)
+            {
+                m_sb.Append(" ($hab_on_water x").Append(waterFactor.ToString("0.##")).Append(')');
             }
             m_sb.Append('\n');
 
@@ -177,8 +164,12 @@ namespace HotAirBalloons
             {
                 float rudder = b.GetDisplayRudder() * 100f;
                 m_sb.Append("$hab_hud_propeller: ").Append(b.GetCrankCount()).Append('/').Append(b.m_crankSeats.Length)
-                    .Append(" $hab_hud_rowers, ").Append(b.GetPropellerSpeed().ToString("0.0")).Append(" $hab_unit_ms")
+                    .Append(" $hab_hud_rowers, ").Append((b.GetPropellerSpeed() * waterFactor).ToString("0.0")).Append(" $hab_unit_ms")
                     .Append("   $hab_hud_rudder: ").Append(rudder >= 0f ? "+" : "").Append(rudder.ToString("0")).Append('%');
+                if (crankSeat != null)
+                {
+                    m_sb.Append("   $hab_hud_crank: ").Append(BalloonCrankSeat.LocalCranking ? "<color=#ffe080>$hab_crank_on</color>" : "$hab_crank_off");
+                }
             }
             else
             {
@@ -197,6 +188,10 @@ namespace HotAirBalloons
                 string keys = station.StationIndex == BalloonStation.Helm ? (b.HasSails ? "$hab_hud_keys_tiller" : "$hab_hud_keys_helm")
                     : station.m_steering && b.HasRudder ? "$hab_hud_keys_rudder" : "$hab_hud_keys";
                 m_sb.Append("\n<color=#c0c0c0>").Append(keys).Append("</color>");
+            }
+            else if (crankSeat != null)
+            {
+                m_sb.Append("\n<color=#c0c0c0>$hab_hud_keys_crank</color>");
             }
             m_text = Localization.instance.Localize(m_sb.ToString().TrimEnd());
         }

@@ -99,7 +99,7 @@ namespace HotAirBalloons.Sim
         public float Capacity = 800f;
         public float WindSpeed = 6f;
         public float ClimbSpeed = 2.5f;
-        public float DescentSpeed = 4f;
+        public float DescentSpeed = 3f;
 
         public float VerticalAccel = 0.8f;
         public float HorizontalAccel = 0.6f;
@@ -127,6 +127,9 @@ namespace HotAirBalloons.Sim
         public int CrankSeats = 6;
         public float TurnRate = 20f;
         public float PropellerAccel = 1.5f;
+
+        /// <summary>На плаву шар движется медленнее, чем в воздухе: доля скорости — для всего (ветер, паруса, винт).</summary>
+        public float WaterSpeedFactor = 0.5f;
 
         public float AnchorDropSpeed = 6f;
         public bool AlignToTravel;
@@ -413,12 +416,16 @@ namespace HotAirBalloons.Sim
 
             UpdateAnchor(s, i, ref a);
 
-            bool onWater = i.WaterY > i.SolidY + 0.05f && i.BottomY - i.WaterY < 0.3f;
+            bool onWater = IsOnWater(i.WaterY, i.SolidY, i.BottomY);
             r.Calm = i.AnchorOut && r.Agl < s.CalmBoundary;
             r.Friction = i.Grounded && !onWater;
 
             bool stopped = r.Calm || r.Friction;
             V2 target = stopped ? V2.Zero : HorizontalTarget(s, i);
+            if (onWater)
+            {
+                target = target * Clamp(s.WaterSpeedFactor, 0f, 1f);
+            }
             r.TargetHVel = target;
 
             float hAccel = stopped ? s.StopAccel : (s.Propeller ? s.PropellerAccel : s.HorizontalAccel);
@@ -445,6 +452,9 @@ namespace HotAirBalloons.Sim
             }
             return r;
         }
+
+        /// <summary>На плаву: под корзиной вода глубже 5 см, дно не выше 0,3 м над ней.</summary>
+        public static bool IsOnWater(float waterY, float solidY, float bottomY) => waterY > solidY + 0.05f && bottomY - waterY < 0.3f;
 
         public static float Clamp(float v, float min, float max) => v < min ? min : (v > max ? max : v);
 

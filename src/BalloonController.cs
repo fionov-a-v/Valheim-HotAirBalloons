@@ -82,6 +82,14 @@ namespace HotAirBalloons
         /// <summary>Вес инвентаря игрока — каждый клиент пишет его в ZDO своего персонажа.</summary>
         public static readonly int s_playerInventoryWeight = "hab_invWeight".GetStableHashCode();
 
+        /// <summary>Шар поворачивается только вокруг вертикали: вращение по X и Z заморожено.</summary>
+        public const RigidbodyConstraints UprightConstraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+
+        /// <summary>Выпрямление: наклон меньше этого (градусы) — уже ровно; скорость — не меньше минимальной, иначе наклон × коэффициент в секунду.</summary>
+        private const float UprightTolerance = 0.05f;
+        private const float UprightMinRate = 15f;
+        private const float UprightGain = 2f;
+
         private static int s_solidMask;
         private static readonly RaycastHit[] s_hits = new RaycastHit[32];
 
@@ -137,6 +145,7 @@ namespace HotAirBalloons
             {
                 m_body.useGravity = false;
                 m_body.maxDepenetrationVelocity = 2f;
+                SetupMassDistribution();
             }
 
             m_nview.Register<long, int>("HAB_RequestControl", RPC_RequestControl);
@@ -156,6 +165,22 @@ namespace HotAirBalloons
         private void OnDestroy()
         {
             Instances.Remove(this);
+        }
+
+        /// <summary>
+        /// Центр масс — на оси шара, главные оси инерции — строго по осям шара. Автоматический расчёт по несимметричным
+        /// коллайдерам (стойка руля, нос и корма, сундук) поворачивает оси инерции, и тогда удары (деревья, склон, люди
+        /// в корзине) через перекрёстные члены тензора наклоняют шар, хотя вращение по X и Z заморожено.
+        /// </summary>
+        private void SetupMassDistribution()
+        {
+            float hx = m_onboardRadius > 0f ? m_onboardRadius : m_onboardHalfSize.x;
+            float hz = m_onboardRadius > 0f ? m_onboardRadius : m_onboardHalfSize.z;
+            float hy = m_onboardHalfSize.y;
+            float m = m_body.mass / 3f;
+            m_body.centerOfMass = new Vector3(0f, m_onboardCenter.y, 0f);
+            m_body.inertiaTensorRotation = Quaternion.identity;
+            m_body.inertiaTensor = new Vector3(m * (hy * hy + hz * hz), m * (hx * hx + hz * hz), m * (hx * hx + hy * hy));
         }
 
         // ------------------------------------------------------------------ состояние (для всех клиентов)
@@ -234,7 +259,7 @@ namespace HotAirBalloons
         }
 
         /// <summary>
-        /// Максимальное отклонение курса от ветра, градусы (30% = 54°). У драккара — условные 90°:
+        /// Максимальное отклонение курса от ветра, градусы (66.67% = 120°). У драккара — условные 90°:
         /// дуга руля в HUD до упора — четверть круга, как у корабля.
         /// </summary>
         public float RudderMaxAngleDeg => HasPropeller ? 90f
@@ -303,6 +328,13 @@ namespace HotAirBalloons
             Vector3 w = EnvMan.instance.GetWindDir();
             w.y = 0f;
             return w.sqrMagnitude > 1e-4f ? w.normalized : transform.forward;
+        }
+
+        /// <summary>Шар на плаву — как считает симуляция (там всё вдвое медленнее).</summary>
+        public bool IsOnWater()
+        {
+            Vector3 p = transform.position;
+            return BalloonSim.IsOnWater(GetWaterLevel(), GetSolidHeight(p), p.y);
         }
 
         /// <summary>Штиль: якорь выпущен и шар ниже границы штиля.</summary>
@@ -501,6 +533,11 @@ namespace HotAirBalloons
                 RecomputeLoad();
                 zdo.Set(s_load, m_load);
             }
+            else
+            {
+                // Гребец нажал W или S — винт отзывается сразу, не дожидаясь пересчёта груза.
+                UpdateCrankMask();
+            }
 
             Vector3 pos = m_body.position;
             Vector3 vel = m_body.linearVelocity;
@@ -539,6 +576,7 @@ namespace HotAirBalloons
 
             m_body.linearVelocity = new Vector3(r.HVel.X, r.VVel, r.HVel.Z);
             m_body.angularVelocity = new Vector3(0f, r.YawRateDeg * Mathf.Deg2Rad, 0f);
+            KeepUpright(dt);
 
             if (r.Burning)
             {
@@ -575,6 +613,27 @@ namespace HotAirBalloons
                 m_feedTimer = 1f;
                 FeedFromChest();
             }
+        }
+
+        /// <summary>
+        /// Шар всегда висит ровно — в полёте, у якоря, в штиле и на земле. Каждый шаг физики проверяем наклон;
+        /// если удар (дерево, склон) всё-таки наклонил шар, плавно возвращаем его в вертикаль вокруг горизонтальной оси
+        /// (чем больше наклон, тем быстрее), курс не трогаем. Вращение по X и Z при этом остаётся замороженным: иначе шар,
+        /// который симуляция прижимает к дереву, контакт заваливал бы каждый шаг. MoveRotation — с интерполяцией, без рывков.
+        /// </summary>
+        private void KeepUpright(float dt)
+        {
+            Quaternion rot = m_body.rotation;
+            Vector3 up = rot * Vector3.up;
+            float tilt = Vector3.Angle(up, Vector3.up);
+            if (tilt < UprightTolerance)
+            {
+                return;
+            }
+            Quaternion upright = Quaternion.FromToRotation(up, Vector3.up) * rot;
+            // Остаток меньше шага — встаёт ровно, без перелёта.
+            float step = Mathf.Max(UprightMinRate, tilt * UprightGain) * dt;
+            m_body.MoveRotation(Quaternion.RotateTowards(rot, upright, step));
         }
 
         /// <summary>
@@ -668,7 +727,7 @@ namespace HotAirBalloons
             UpdateCrankMask();
         }
 
-        /// <summary>Владелец: кто из тех, кто на борту, сидит на сиденьях с рукоятями (по меткам в ZDO персонажей).</summary>
+        /// <summary>Владелец: кто из тех, кто на борту, крутит рукоять на своём сиденье (по меткам в ZDO персонажей).</summary>
         private void UpdateCrankMask()
         {
             if (m_crankSeats.Length == 0)
