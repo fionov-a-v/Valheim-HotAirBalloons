@@ -42,6 +42,7 @@ namespace HotAirBalloons
 
                 { "hab_mode_up", "Up" },
                 { "hab_mode_hold", "Hold altitude" },
+                { "hab_mode_low", "Slow descent" },
                 { "hab_mode_down", "Down (fire off)" },
                 { "hab_no_fuel", "no fuel" },
                 { "hab_anchor_raised", "raised" },
@@ -112,6 +113,7 @@ namespace HotAirBalloons
 
                 { "hab_mode_up", "Вверх" },
                 { "hab_mode_hold", "Держать высоту" },
+                { "hab_mode_low", "Плавно вниз" },
                 { "hab_mode_down", "Вниз (огонь погашен)" },
                 { "hab_no_fuel", "нет топлива" },
                 { "hab_anchor_raised", "поднят" },

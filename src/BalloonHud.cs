@@ -70,6 +70,8 @@ namespace HotAirBalloons
                     return "<color=#ffb040>$hab_mode_up</color>";
                 case BurnMode.Hold:
                     return "<color=#ffe080>$hab_mode_hold</color>";
+                case BurnMode.Low:
+                    return "<color=#e8c890>$hab_mode_low</color>";
                 default:
                     return "<color=#a0c0ff>$hab_mode_down</color>";
             }

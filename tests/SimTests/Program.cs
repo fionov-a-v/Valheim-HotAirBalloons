@@ -107,6 +107,41 @@ namespace HotAirBalloons.Tests
             }
             {
                 var w = new World(Medium());
+                w.I.Mode = BurnMode.Up;
+                w.I.Load = 100f;
+                w.I.HasCeiling = true;
+                w.I.CeilingY = 70f;
+                w.Run(150f);
+                Check("абсолютный потолок другого мода ниже своего — держится у него", Math.Abs(w.I.BottomY - 70f) < 1.5f, $"y={w.I.BottomY:0.0}");
+            }
+            {
+                // швартовка крюком к стене на высоте 60 м, верёвка 12 м: ветер не уносит дальше верёвки,
+                // горелка не поднимает выше точки зацепа + длины верёвки
+                var w = new World(Medium());
+                w.I.Mode = BurnMode.Up;
+                w.I.Load = 100f;
+                w.I.BottomY = 55f;
+                w.I.Moored = true;
+                w.I.MoorPoint = new V2(0f, 0f);
+                w.I.MoorY = 60f;
+                w.I.MoorLength = 12f;
+                float far = 0f;
+                w.Run(60f, x => far = Math.Max(far, (float)Math.Sqrt((x.I.Pos - x.I.MoorPoint).Length * (x.I.Pos - x.I.MoorPoint).Length +
+                    (x.I.BottomY - x.I.MoorY) * (x.I.BottomY - x.I.MoorY))));
+                Check("швартовка: шар держится не дальше длины верёвки от зацепа", far < 12.8f && w.I.BottomY < 72.5f, $"far={far:0.0} y={w.I.BottomY:0.0}");
+            }
+            {
+                var w = new World(Medium());
+                w.I.Mode = BurnMode.Up;
+                w.I.Load = 100f;
+                w.I.HasRoof = true;
+                w.I.RoofGap = 1f;
+                w.I.BottomY = 40f;
+                w.Run(10f);
+                Check("зонд вверх: над куполом скала — не поднимается", w.I.BottomY <= 40.01f, $"y={w.I.BottomY:0.00}");
+            }
+            {
+                var w = new World(Medium());
                 w.I.Mode = BurnMode.Hold;
                 w.I.BottomY = 50f;
                 w.Run(60f);
@@ -126,6 +161,44 @@ namespace HotAirBalloons.Tests
                 float maxSink = 0f;
                 w.Run(40f, x => maxSink = Math.Max(maxSink, -x.I.VVel));
                 Check("вниз: огонь погашен, посадка 3 м/с", w.I.BottomY < 0.01f && Math.Abs(maxSink - 3f) < 0.01f, $"y={w.I.BottomY:0.00} maxSink={maxSink:0.00}");
+            }
+            {
+                var w = new World(Medium());
+                w.I.Mode = BurnMode.Low;
+                w.I.BottomY = 50f;
+                float maxSink = 0f;
+                w.Run(60f, x => maxSink = Math.Max(maxSink, -x.I.VVel));
+                Check("плавно вниз (огонь на одно деление): 3 / 2 = 1,5 м/с", w.I.BottomY < 0.01f && Math.Abs(maxSink - 1.5f) < 0.01f,
+                    $"y={w.I.BottomY:0.00} maxSink={maxSink:0.00}");
+            }
+            {
+                var w = new World(Medium());
+                w.I.Mode = BurnMode.Low;
+                w.I.Fuel = 0f;
+                w.I.BottomY = 30f;
+                float maxSink = 0f;
+                w.Run(30f, x => maxSink = Math.Max(maxSink, -x.I.VVel));
+                Check("плавно вниз без топлива — как с погашенным огнём: 3 м/с", Math.Abs(maxSink - 3f) < 0.01f, $"maxSink={maxSink:0.00}");
+            }
+            {
+                var w = new World(Medium());
+                w.I.Mode = BurnMode.Low;
+                w.I.Load = 850f;
+                w.I.BottomY = 50f;
+                w.Run(10f);
+                Check("лёгкий перегруз на слабом огне — не медленнее плавного снижения", Math.Abs(w.I.VVel + 1.5f) < 0.01f, $"vv={w.I.VVel:0.00}");
+                w.I.Load = 960f;
+                w.Run(10f);
+                Check("перегруз 20% на слабом огне — быстрее: 3 x 0,75 = 2,25 м/с", Math.Abs(w.I.VVel + 2.25f) < 0.01f, $"vv={w.I.VVel:0.00}");
+            }
+            {
+                var order = new[] { BurnMode.Down, BurnMode.Low, BurnMode.Hold, BurnMode.Up };
+                bool ok = true;
+                for (int level = 0; level < order.Length; level++)
+                {
+                    ok &= BalloonSim.FireLevel(order[level]) == level && BalloonSim.ModeAtLevel(level) == order[level];
+                }
+                Check("огонь по делениям: погашен → плавно вниз → держать высоту → вверх", ok, $"level(Low)={BalloonSim.FireLevel(BurnMode.Low)}");
             }
             {
                 var w = new World(Medium());

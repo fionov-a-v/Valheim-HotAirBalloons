@@ -66,6 +66,9 @@ namespace HotAirBalloons
         public static readonly int s_anchorOut = "hab_anchorOut".GetStableHashCode();
         public static readonly int s_anchorState = "hab_anchorState".GetStableHashCode();
         public static readonly int s_anchorPos = "hab_anchorPos".GetStableHashCode();
+        public static readonly int s_moorOn = "hab_moorOn".GetStableHashCode();
+        public static readonly int s_moorPos = "hab_moorPos".GetStableHashCode();
+        public static readonly int s_moorLen = "hab_moorLen".GetStableHashCode();
         public static readonly int s_ropeOut = "hab_ropeOut".GetStableHashCode();
         public static readonly int s_load = "hab_load".GetStableHashCode();
         public static readonly int s_user = "hab_user".GetStableHashCode();
@@ -155,6 +158,8 @@ namespace HotAirBalloons
             m_nview.Register<int>("HAB_ChangeSail", RPC_ChangeSail);
             m_nview.Register<float>("HAB_Rudder", RPC_Rudder);
             m_nview.Register("HAB_ToggleAnchor", RPC_ToggleAnchor);
+            m_nview.Register<Vector3, float>("HAB_Moor", RPC_Moor);
+            m_nview.Register("HAB_Unmoor", RPC_Unmoor);
             m_nview.Register<float>("HAB_AddFuel", RPC_AddFuel);
 
             BalloonConfig.Fill(m_settings, m_kind);
@@ -198,6 +203,18 @@ namespace HotAirBalloons
         public Vector3 GetAnchorPoint() => m_nview != null && m_nview.IsValid() ? m_nview.GetZDO().GetVec3(s_anchorPos, transform.position) : transform.position;
 
         public float GetRopeOut() => m_nview != null && m_nview.IsValid() ? m_nview.GetZDO().GetFloat(s_ropeOut) : 0f;
+
+        /// <summary>Пришвартован (крюком другого мода, BalloonsApi.Moor): точка зацепа и длина верёвки.</summary>
+        public bool IsMoored() => m_nview != null && m_nview.IsValid() && m_nview.GetZDO().GetBool(s_moorOn);
+
+        public Vector3 GetMoorPoint() => m_nview != null && m_nview.IsValid() ? m_nview.GetZDO().GetVec3(s_moorPos, transform.position) : transform.position;
+
+        public void Moor(Vector3 point, float length) => m_nview.InvokeRPC("HAB_Moor", point, length);
+
+        public void Unmoor() => m_nview.InvokeRPC("HAB_Unmoor");
+
+        /// <summary>Точка крепления швартовой верёвки — перила корзины (верх зоны «на борту»).</summary>
+        public Vector3 GetRailPoint() => transform.TransformPoint(m_onboardCenter + Vector3.up * m_onboardHalfSize.y * 0.6f);
 
         public float GetLoad() => m_nview != null && m_nview.IsValid() ? m_nview.GetZDO().GetFloat(s_load) : 0f;
 
@@ -459,6 +476,42 @@ namespace HotAirBalloons
             return WorldGenerator.instance != null ? WorldGenerator.instance.GetHeight(pos.x, pos.z) : pos.y - 1000f;
         }
 
+        /// <summary>
+        /// Зонд вверх: от верха купола лучом вверх на 6 м (без своих коллайдеров и движущихся объектов).
+        /// Под нависающей скалой или островом шар не поднимается в неё.
+        /// </summary>
+        private bool ProbeRoof(out float gap)
+        {
+            gap = float.PositiveInfinity;
+            if (m_envelopeRenderer == null)
+            {
+                return false;
+            }
+            if (s_solidMask == 0)
+            {
+                s_solidMask = LayerMask.GetMask("Default", "static_solid", "Default_small", "piece", "terrain");
+            }
+            Bounds b = m_envelopeRenderer.bounds;
+            var top = new Vector3(b.center.x, b.max.y - 0.2f, b.center.z);
+            float r = Mathf.Min(b.extents.x, b.extents.z) * 0.6f;
+            int n = Physics.SphereCastNonAlloc(top, Mathf.Max(0.5f, r), Vector3.up, s_hits, 6f, s_solidMask, QueryTriggerInteraction.Ignore);
+            bool any = false;
+            for (int k = 0; k < n; k++)
+            {
+                RaycastHit hit = s_hits[k];
+                if (hit.collider == null || hit.collider.attachedRigidbody != null || hit.distance <= 0f)
+                {
+                    continue;
+                }
+                if (hit.distance < gap)
+                {
+                    gap = hit.distance;
+                    any = true;
+                }
+            }
+            return any;
+        }
+
         public static float GetWaterLevel()
         {
             return ZoneSystem.instance != null ? ZoneSystem.instance.m_waterLevel : 30f;
@@ -548,6 +601,8 @@ namespace HotAirBalloons
 
             BurnMode mode = (BurnMode)zdo.GetInt(s_mode);
             float fuel = zdo.GetFloat(s_fuel);
+            bool hasCeiling = BalloonsApi.TryGetCeiling(pos, out float ceilingY);
+            bool hasRoof = ProbeRoof(out float roofGap);
             var input = new SimInput
             {
                 Dt = dt,
@@ -569,7 +624,19 @@ namespace HotAirBalloons
                 AnchorOut = zdo.GetBool(s_anchorOut),
                 // Стоит на земле: дно касается поверхности (или есть контакт снизу — например, на склоне).
                 Grounded = pos.y - solid < 0.06f || Time.time - m_lastGroundContact < 0.2f,
+                HasCeiling = hasCeiling,
+                CeilingY = ceilingY,
+                HasRoof = hasRoof,
+                RoofGap = roofGap,
+                Moored = zdo.GetBool(s_moorOn),
             };
+            if (input.Moored)
+            {
+                Vector3 mp = zdo.GetVec3(s_moorPos, pos);
+                input.MoorPoint = new V2(mp.x, mp.z);
+                input.MoorY = mp.y;
+                input.MoorLength = zdo.GetFloat(s_moorLen, 10f);
+            }
 
             AnchorState prevState = m_anchorMem.State;
             SimResult r = BalloonSim.Step(m_settings, input, ref m_anchorMem);
@@ -580,7 +647,9 @@ namespace HotAirBalloons
 
             if (r.Burning)
             {
-                float rate = mode == BurnMode.Up ? 1f : BalloonConfig.HoldFuelFactor.Value;
+                float rate = mode == BurnMode.Up ? 1f
+                    : mode == BurnMode.Hold ? BalloonConfig.HoldFuelFactor.Value
+                    : BalloonConfig.SlowDescentFuelFactor.Value;
                 fuel = Mathf.Max(0f, fuel - dt / Mathf.Max(1f, Config.BurnTime.Value) * rate);
                 zdo.Set(s_fuel, fuel);
             }
@@ -1058,8 +1127,9 @@ namespace HotAirBalloons
             {
                 return;
             }
-            int mode = Mathf.Clamp(m_nview.GetZDO().GetInt(s_mode) + delta, (int)BurnMode.Down, (int)BurnMode.Up);
-            m_nview.GetZDO().Set(s_mode, mode);
+            // По делениям огня: погашен → плавно вниз → держать высоту → вверх.
+            int level = Mathf.Clamp(BalloonSim.FireLevel((BurnMode)m_nview.GetZDO().GetInt(s_mode)) + delta, 0, 3);
+            m_nview.GetZDO().Set(s_mode, (int)BalloonSim.ModeAtLevel(level));
         }
 
         private void RPC_ChangeSail(long sender, int delta)
@@ -1077,6 +1147,25 @@ namespace HotAirBalloons
             if (!ForwardIfNotOwner(sender, "HAB_Rudder", value))
             {
                 m_nview.GetZDO().Set(s_rudder, Mathf.Clamp(value, -1f, 1f));
+            }
+        }
+
+        private void RPC_Moor(long sender, Vector3 point, float length)
+        {
+            if (!ForwardIfNotOwner(sender, "HAB_Moor", point, length))
+            {
+                ZDO zdo = m_nview.GetZDO();
+                zdo.Set(s_moorOn, true);
+                zdo.Set(s_moorPos, point);
+                zdo.Set(s_moorLen, Mathf.Max(2f, length));
+            }
+        }
+
+        private void RPC_Unmoor(long sender)
+        {
+            if (!ForwardIfNotOwner(sender, "HAB_Unmoor"))
+            {
+                m_nview.GetZDO().Set(s_moorOn, false);
             }
         }
 
@@ -1114,6 +1203,7 @@ namespace HotAirBalloons
             }
             UpdateEnvelopeVisibility();
             UpdatePropeller();
+            UpdateMoorRope();
             if (m_rudderPivots.Length == 0 && m_tillerPivots.Length == 0)
             {
                 return;
@@ -1135,6 +1225,45 @@ namespace HotAirBalloons
                 {
                     pivot.localRotation = tilt;
                 }
+            }
+        }
+
+        private LineRenderer m_moorRope;
+
+        /// <summary>Швартовая верёвка: от перил корзины к точке зацепа с небольшим провисом (видят все).</summary>
+        private void UpdateMoorRope()
+        {
+            bool on = IsMoored();
+            if (!on)
+            {
+                if (m_moorRope != null)
+                {
+                    m_moorRope.enabled = false;
+                }
+                return;
+            }
+            if (m_moorRope == null)
+            {
+                var go = new GameObject("MoorRope");
+                go.transform.SetParent(transform, false);
+                m_moorRope = go.AddComponent<LineRenderer>();
+                m_moorRope.positionCount = 12;
+                m_moorRope.widthMultiplier = 0.05f;
+                m_moorRope.useWorldSpace = true;
+                m_moorRope.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                Material mat = m_anchor != null && m_anchor.m_rope != null ? m_anchor.m_rope.sharedMaterial : null;
+                if (mat != null)
+                {
+                    m_moorRope.sharedMaterial = mat;
+                }
+            }
+            m_moorRope.enabled = true;
+            Vector3 a = GetRailPoint(), b = GetMoorPoint();
+            float sag = Mathf.Min(1.5f, Vector3.Distance(a, b) * 0.06f);
+            for (int i = 0; i < 12; i++)
+            {
+                float t = i / 11f;
+                m_moorRope.SetPosition(i, Vector3.Lerp(a, b, t) + Vector3.down * (sag * 4f * t * (1f - t)));
             }
         }
 

@@ -11,11 +11,11 @@ namespace HotAirBalloons
     /// для всех, кто на шаре. Логика — как в Hud.UpdateShipHud, углы — шара:
     /// <list type="bullet">
     /// <item>иконка справа вверху: у «Летучего карви» — его паруса (наполовину, полностью; сложены — пусто), значка весла нет;
-    /// у остальных — огонь («вверх» — полный парус, «держать высоту» — половина, «вниз» — ничего);</item>
+    /// у остальных — огонь («вверх» — полный парус, «держать высоту» — половина, «плавно вниз» и «вниз» — ничего);</item>
     /// <item>рядом (добавлено модом): значок выброшенного якоря (белый — висит, зелёный — держит, голубой — штиль),
     /// под циферблатом — высота и груз (красный при перегрузе);</item>
     /// <item>штурвал со стрелками — только у того, кто держится за огонь или руль-палку: стрелки всегда показывают огонь
-    /// (две — держать высоту, три — вверх, нет — вниз), с какого места ни смотри;</item>
+    /// (одна — плавно вниз, две — держать высоту, три — вверх, нет — огонь погашен), с какого места ни смотри;</item>
     /// <item>циферблат: курс шара относительно камеры и ветер относительно шара; стрелка ветра тускнеет,
     /// когда руль забирает скорость или (у драккара) ветер встречный, и гаснет в штиль у якоря;</item>
     /// <item>дуга руля — настоящий угол отклонения от ветра (до 120° у карви), у драккара — положение руля, как у корабля.</item>
@@ -60,7 +60,7 @@ namespace HotAirBalloons
 
             BurnMode mode = balloon.GetMode();
             bool burning = balloon.IsBurning();
-            int fire = !burning ? 0 : (mode == BurnMode.Up ? 2 : 1);
+            int fire = burning ? BalloonSim.FireLevel(mode) : 0;
             float rudder = balloon.HasRudder ? balloon.GetDisplayRudder() : 0f;
 
             if (balloon.HasSails)
@@ -72,8 +72,8 @@ namespace HotAirBalloons
             }
             else
             {
-                hud.m_halfSail.SetActive(fire == 1);
-                hud.m_fullSail.SetActive(fire == 2);
+                hud.m_halfSail.SetActive(fire == 2);
+                hud.m_fullSail.SetActive(fire == 3);
             }
             // Значок весла — корабль «на вёслах»; у шаров вёсел нет.
             hud.m_rudder.SetActive(false);
@@ -110,11 +110,11 @@ namespace HotAirBalloons
                 hud.m_shipControlsRoot.SetActive(true);
             }
 
-            // Стрелки хода — всегда огонь, с любого места: две — держать высоту, три — вверх, нет — вниз
-            // (паруса карви — на иконке справа вверху).
-            hud.m_rudderSlow.SetActive(false);
-            hud.m_rudderForward.SetActive(fire == 1);
-            hud.m_rudderFastForward.SetActive(fire == 2);
+            // Стрелки хода — всегда огонь, с любого места: сколько делений горит — одна (плавно вниз), две (держать высоту),
+            // три (вверх), нет — огонь погашен (паруса карви — на иконке справа вверху).
+            hud.m_rudderSlow.SetActive(fire == 1);
+            hud.m_rudderForward.SetActive(fire == 2);
+            hud.m_rudderFastForward.SetActive(fire == 3);
             hud.m_rudderBackward.SetActive(false);
             hud.m_rudderLeft.SetActive(false);
             hud.m_rudderRight.SetActive(false);

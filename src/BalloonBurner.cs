@@ -4,7 +4,7 @@ using UnityEngine;
 namespace HotAirBalloons
 {
     /// <summary>
-    /// Источник огня (чаша / горелка / печь). W/S — огонь сильнее/слабее (вниз → держать высоту → вверх),
+    /// Источник огня (чаша / горелка / печь). W/S — огонь сильнее/слабее (погашен → плавно вниз → держать высоту → вверх),
     /// ПКМ — якорь; у шаров без руля-палки ещё и A/D — руль. Здесь же подкидывают топливо.
     /// </summary>
     public class BalloonBurner : BalloonStation
@@ -56,8 +56,7 @@ namespace HotAirBalloons
 
         private void UpdateFireVisual()
         {
-            BurnMode mode = m_ctrl.GetMode();
-            int state = mode == BurnMode.Down || m_ctrl.GetFuel() <= 0f ? 0 : (int)mode;
+            int state = m_ctrl.IsBurning() ? BalloonSim.FireLevel(m_ctrl.GetMode()) : 0;
             if (state == m_visualState)
             {
                 return;
@@ -70,9 +69,9 @@ namespace HotAirBalloons
                     go.SetActive(state > 0);
                 }
             }
-            // На полном огне пламя выше и гуще.
-            float rateMul = state == (int)BurnMode.Up ? 1.8f : 1f;
-            float sizeMul = state == (int)BurnMode.Up ? 1.35f : 1f;
+            // На полном огне пламя выше и гуще, на слабом — ниже и реже.
+            float rateMul = state == 3 ? 1.8f : state == 1 ? 0.55f : 1f;
+            float sizeMul = state == 3 ? 1.35f : state == 1 ? 0.7f : 1f;
             for (int i = 0; i < m_particles.Length; i++)
             {
                 if (m_particles[i] == null)

@@ -66,12 +66,17 @@ namespace HotAirBalloons.Sim
         public override string ToString() => $"({X:0.00}, {Z:0.00})";
     }
 
-    /// <summary>Режим горелки: вниз — огонь погашен, держать высоту — средний расход, вверх — полный.</summary>
+    /// <summary>
+    /// Режим горелки: вниз — огонь погашен, плавно вниз — слабый огонь (самый малый расход), держать высоту — средний,
+    /// вверх — полный. Числа хранятся в ZDO шаров, поэтому новый режим дописан в конец; порядок силы огня —
+    /// <see cref="BalloonSim.FireLevel"/>.
+    /// </summary>
     public enum BurnMode
     {
         Down = 0,
         Hold = 1,
         Up = 2,
+        Low = 3,
     }
 
     /// <summary>Паруса среднего шара, как у кораблей: сложены, наполовину, полностью.</summary>
@@ -100,6 +105,9 @@ namespace HotAirBalloons.Sim
         public float WindSpeed = 6f;
         public float ClimbSpeed = 2.5f;
         public float DescentSpeed = 3f;
+
+        /// <summary>Плавное снижение (слабый огонь): доля от DescentSpeed.</summary>
+        public float SlowDescentFactor = 0.5f;
 
         public float VerticalAccel = 0.8f;
         public float HorizontalAccel = 0.6f;
@@ -175,6 +183,20 @@ namespace HotAirBalloons.Sim
 
         /// <summary>Корзина стоит на твёрдой поверхности.</summary>
         public bool Grounded;
+
+        /// <summary>Абсолютный потолок дна корзины (мировая высота) от другого мода (BalloonsApi), если задан.</summary>
+        public bool HasCeiling;
+        public float CeilingY;
+
+        /// <summary>Над куполом твёрдое (зонд вверх): сколько до него метров.</summary>
+        public bool HasRoof;
+        public float RoofGap;
+
+        /// <summary>Шар пришвартован (другой мод, BalloonsApi.Moor): точка и длина верёвки от корзины.</summary>
+        public bool Moored;
+        public V2 MoorPoint;
+        public float MoorY;
+        public float MoorLength;
     }
 
     /// <summary>Состояние якоря, которое хранит владелец шара.</summary>
@@ -213,6 +235,37 @@ namespace HotAirBalloons.Sim
         public static float Agl(in SimInput i) => i.BottomY - Math.Max(i.SolidY, i.WaterY);
 
         public static bool IsBurning(in SimInput i) => i.Mode != BurnMode.Down && i.Fuel > 0f;
+
+        /// <summary>Сила огня по порядку (сколько делений горит): погашен 0, плавно вниз 1, держать высоту 2, вверх 3.</summary>
+        public static int FireLevel(BurnMode mode)
+        {
+            switch (mode)
+            {
+                case BurnMode.Low:
+                    return 1;
+                case BurnMode.Hold:
+                    return 2;
+                case BurnMode.Up:
+                    return 3;
+                default:
+                    return 0;
+            }
+        }
+
+        public static BurnMode ModeAtLevel(int level)
+        {
+            switch (level)
+            {
+                case 1:
+                    return BurnMode.Low;
+                case 2:
+                    return BurnMode.Hold;
+                case 3:
+                    return BurnMode.Up;
+                default:
+                    return BurnMode.Down;
+            }
+        }
 
         public static float LoadRatio(SimSettings s, float load) => s.Capacity > 0f ? load / s.Capacity : 0f;
 
@@ -256,15 +309,22 @@ namespace HotAirBalloons.Sim
             float ratio = LoadRatio(s, i.Load);
             overloaded = ratio > 1f;
 
+            // Доля скорости снижения на горящем огне: перегруз — горелка не вытягивает, шар снижается тем быстрее,
+            // чем сильнее перегруз; слабый огонь — плавное снижение (с перегрузом — не медленнее него).
+            float sink = overloaded ? Clamp(0.35f + (ratio - 1f) * 2f, 0.35f, 1f) : 0f;
+            if (i.Mode == BurnMode.Low)
+            {
+                sink = Math.Max(sink, Clamp(s.SlowDescentFactor, 0f, 1f));
+            }
+
             float target;
             if (!IsBurning(i))
             {
                 target = -s.DescentSpeed;
             }
-            else if (overloaded)
+            else if (sink > 0f)
             {
-                // Перегруз: горелка не вытягивает, шар снижается тем быстрее, чем сильнее перегруз.
-                target = -s.DescentSpeed * Clamp(0.35f + (ratio - 1f) * 2f, 0.35f, 1f);
+                target = -s.DescentSpeed * sink;
             }
             else
             {
@@ -276,6 +336,28 @@ namespace HotAirBalloons.Sim
                 {
                     target = Math.Max(ceiling, -s.DescentSpeed * 0.5f);
                 }
+                // Абсолютный потолок (другой мод, например парящие острова: шар не поднимается выше их середины).
+                if (i.HasCeiling)
+                {
+                    float abs = (i.CeilingY - i.BottomY) * 0.5f;
+                    if (abs < target)
+                    {
+                        target = Math.Max(abs, -s.DescentSpeed * 0.5f);
+                    }
+                }
+            }
+
+            // Швартовка: выше точки зацепа больше длины верёвки шар не поднимается.
+            if (i.Moored && target > 0f)
+            {
+                float rise = i.MoorLength - (i.BottomY - i.MoorY);
+                target = Math.Min(target, Math.Max(0f, rise) * 0.5f);
+            }
+
+            // Зонд вверх: над куполом твёрдое ближе 3 м — шар не поднимается, вплотную — опускается.
+            if (i.HasRoof && target > 0f)
+            {
+                target = Math.Min(target, (i.RoofGap - 1.5f) * 0.5f);
             }
 
             // Корзина держится на воде.
@@ -369,8 +451,13 @@ namespace HotAirBalloons.Sim
         /// <summary>Якорь держит только по горизонтали: шар не может уйти дальше половины длины каната.</summary>
         public static V2 ApplyAnchorLimit(SimSettings s, in SimInput i, in AnchorMemory a, V2 hvel)
         {
-            float radius = s.AnchorLength * 0.5f;
-            V2 offset = i.Pos - a.Point;
+            return LimitToCircle(i.Pos, a.Point, s.AnchorLength * 0.5f, hvel, i.Dt);
+        }
+
+        /// <summary>Не дальше radius от center: скорость наружу гасится, вышедший за круг мягко возвращается.</summary>
+        public static V2 LimitToCircle(V2 pos, V2 center, float radius, V2 hvel, float dt)
+        {
+            V2 offset = pos - center;
             float dist = offset.Length;
             if (dist < 1e-4f)
             {
@@ -379,7 +466,7 @@ namespace HotAirBalloons.Sim
 
             V2 n = offset / dist;
             float radial = V2.Dot(hvel, n);
-            V2 next = offset + hvel * i.Dt;
+            V2 next = offset + hvel * dt;
             if (next.Length > radius && radial > 0f)
             {
                 hvel -= n * radial;
@@ -433,6 +520,13 @@ namespace HotAirBalloons.Sim
             if (a.State == AnchorState.Holding)
             {
                 hvel = ApplyAnchorLimit(s, i, a, hvel);
+            }
+            if (i.Moored)
+            {
+                // по горизонтали — не дальше длины верёвки (за вычетом высоты над/под точкой зацепа)
+                float dy = i.BottomY - i.MoorY;
+                float radius = (float)Math.Sqrt(Math.Max(1f, i.MoorLength * i.MoorLength - dy * dy));
+                hvel = LimitToCircle(i.Pos, i.MoorPoint, radius, hvel, i.Dt);
             }
             r.HVel = hvel;
 

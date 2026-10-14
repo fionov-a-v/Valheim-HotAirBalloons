@@ -1,10 +1,10 @@
 # Воздушные шары (Hot Air Balloons) — мод для Valheim
 
-Автор: Fionov Alexander · исходники: https://github.com/fionov-a-v/Valheim-HotAirBalloons
+Автор: Fionov Alexander · исходники: https://github.com/fionov-a-v/Valheim-HotAirBalloons · [English below](#english)
 
 Добавляет три воздушных судна. Все держат высоту огнём, у каждого есть якорь. «Дутый тролль» летит только по ветру,
 «Летучий карви» — с боковыми парусами и рулём-палкой, «Небесный драккар» — с винтом, который крутят гребцы:
-он летит и против ветра. Сделано для Valheim 1.0.16 на BepInEx 5 и Jötunn 2.30.
+он летит и против ветра. Сделано для Valheim 1.0.17 на BepInEx 5 и Jötunn 2.30.
 
 | | Дутый тролль | Летучий карви | Небесный драккар |
 |---|---|---|---|
@@ -77,7 +77,7 @@
 | Действие | Как |
 |---|---|
 | Взяться за управление | [E] на огне (чаша, фонарь) или на руле-палке («Летучий карви», «Небесный драккар»). Если вы снаружи, игрок сам встанет (сядет) на место |
-| Огонь сильнее / слабее | W / S у огня. Режимы: вниз (огонь погашен) → держать высоту → вверх. У драккара — и с руля-палки |
+| Огонь сильнее / слабее | W / S у огня. Режимы: вниз (огонь погашен) → плавно вниз → держать высоту → вверх. У драккара — и с руля-палки |
 | Паруса («Летучий карви») | W / S у руля-палки: сложены → наполовину → полностью |
 | Руль | A / D у руля-палки: у карви — поворачивает паруса (курс отклоняется от ветра), у драккара — поворачивает корабль |
 | Крутить винт («Небесный драккар») | [E] на сиденье с рукоятью — сесть, W — крутить, S — перестать. Каждый гребец решает за себя; севший сначала не крутит. Встать — [E] или прыжок |
@@ -95,7 +95,8 @@
 **Корабельный HUD** игры (справа вверху, как у корабля) показывается всем, кто на борту:
 
 - иконка паруса: у карви — его паруса (наполовину — половина паруса, полностью — полный парус, сложены — пусто);
-  у тролля и драккара — огонь (полный парус — «вверх», половина — «держать высоту», пусто — огонь погашен).
+  у тролля и драккара — огонь (полный парус — «вверх», половина — «держать высоту», пусто — «плавно вниз»
+  или огонь погашен).
   Значка вёсел у шаров нет;
 - слева от неё — значок якоря, пока якорь выпущен: белый — висит, зелёный — держит, голубой — штиль;
 - циферблат: курс и направление ветра относительно корабля. Стрелка ветра тускнеет, когда руль забирает скорость
@@ -103,9 +104,9 @@
 - под циферблатом — высота над землёй (из потолка) и груз с грузоподъёмностью (красным — перегруз).
 
 Тому, кто держится за огонь или руль-палку, ещё показывается штурвал со стрелками. Стрелки всегда показывают огонь,
-с какого места ни смотри: две — «держать высоту», три — «вверх», нет стрелок — огонь погашен (паруса карви — на иконке
-паруса справа вверху). Жёлтая дуга — руль (у карви — настоящий угол отклонения от ветра, до 120°; у драккара —
-положение руля, как у корабля).
+с какого места ни смотри: одна — «плавно вниз», две — «держать высоту», три — «вверх», нет стрелок — огонь погашен
+(паруса карви — на иконке паруса справа вверху). Жёлтая дуга — руль (у карви — настоящий угол отклонения от ветра,
+до 120°; у драккара — положение руля, как у корабля).
 
 Вверху экрана — короткая панель: вертикальная и путевая скорость, ветер, руль, паруса или винт (сколько человек крутят
 и скорость от винта; у гребца — крутит ли он сам), подсказка по клавишам. На плаву рядом с ветром — пометка
@@ -120,6 +121,9 @@
   - «Вверх» — полный расход (единица топлива за `BurnTimePerFuel` секунд) и подъём 2,5 м/с. С грузом подъём медленнее:
     при полной загрузке 1 м/с.
   - «Держать высоту» — шар держит текущую высоту, расход вдвое меньше.
+  - «Плавно вниз» — огонь на одно деление: шар снижается вдвое медленнее, чем с погашенным огнём (1,5 м/с,
+    `SlowDescentPercent`), расход — четверть от полного (`SlowDescentFuelFactor`), меньше, чем у «держать высоту».
+    При перегрузе снижается не медленнее этого.
   - «Вниз» — огонь погашен, топливо не тратится, шар снижается со скоростью 3 м/с.
   - Без топлива шар снижается в любом режиме.
 - **Груз** — это сумма всех, кто на борту: 80 кг сам игрок плюс вес его инвентаря, другие существа по 100 кг,
@@ -169,6 +173,14 @@
 - **Выход из игры в полёте.** При следующем входе вы окажетесь на земле под шаром (над морем — на воде), а не в воздухе,
   где сразу упали бы.
 - **Огонь греет** тех, кто рядом, как ванильный костёр.
+- **Над куполом скала — шар не поднимается.** Зонд от верха купола смотрит на 6 м вверх: под нависающей скалой или
+  островом подъём останавливается, вплотную шар опускается.
+- **Потолок от других модов.** Мод может задать абсолютный потолок (`HotAirBalloons.BalloonsApi.CeilingProvider`:
+  позиция → наибольшая высота дна корзины). Так «Парящие острова» не пускают шар выше низкого края своих островов —
+  дальше только пешком.
+- **Швартовка от других модов** (`BalloonsApi.Moor` / `Unmoor`, версия API 2). Пришвартованный шар держится у точки:
+  ни ветер, ни горелка не уводят корзину дальше длины верёвки, верёвку от перил видят все. В «Парящих островах» так
+  работает крюк-кошка: зацепился со шара за стену острова — [E] привязывает верёвку к перилам, [E] на борту — отвязать.
 - **Без присмотра огонь гаснет.** Если на шаре никого нет 20 секунд и якорь не держит, горелка сама переходит в режим
   «вниз», и брошенный шар садится, а не улетает на весь запас топлива.
 
@@ -184,9 +196,10 @@
 | | `CalmBoundary` | 3 | Граница штиля, м |
 | 2 - Balance | `WindSpeed` | 6 | Скорость при максимальном ветре, м/с |
 | | `ClimbSpeed` / `DescentSpeed` | 2.5 / 3 | Подъём и спуск, м/с |
+| | `SlowDescentPercent` | 50 | Скорость плавного снижения (огонь на одно деление), % от `DescentSpeed` |
 | | `WaterSpeedPercent` | 50 | Скорость на плаву, % от скорости в воздухе (ветер, паруса, винт) |
 | | `PlayerWeight` / `CreatureWeight` | 80 / 100 | Вес игрока без инвентаря и вес существа, кг |
-| | `HoldFuelFactor` | 0.5 | Расход в режиме «держать высоту» |
+| | `HoldFuelFactor` / `SlowDescentFuelFactor` | 0.5 / 0.25 | Расход в режимах «держать высоту» и «плавно вниз» (от полного) |
 | | `RudderMinSpeedPercent` | 30 | Скорость на полном отклонении руля, % |
 | | `AutoFeedFuel` | true | Автоподкидывание топлива |
 | 3 - Client | `ShowHud` | true | Панель шара (только у себя) |
@@ -245,3 +258,83 @@ dotnet run -c Release --project tests/SimTests
 ```
 Required Notice: Copyright Fionov Alexander (https://github.com/fionov-a-v/Valheim-HotAirBalloons)
 ```
+
+---
+
+<a id="english"></a>
+# Hot Air Balloons — mod for Valheim
+
+Three flying craft for Valheim. All of them hold altitude with fire and carry an anchor. The **Puffed Troll** flies only
+with the wind, the **Flying Karve** has side sails and a tiller, and the **Sky Drakkar** has a propeller cranked by its
+rowers, so it flies even against the wind. Made for Valheim 1.0.17 with BepInEx 5 and Jötunn 2.30. English and Russian
+in-game text.
+
+**Install:** needs BepInExPack Valheim and Jötunn. Copy `plugins/HotAirBalloons.dll` into `BepInEx/plugins/`. Every
+player and the dedicated server must have the mod; settings are synced from the server and only admins can change them.
+
+**Build:** Hammer → Misc tab (Transport), next to the crafting station.
+
+| Balloon | Station | Cost | Capacity | Fuel |
+|---|---|---|---|---|
+| Puffed Troll | Workbench | Wood ×20, Troll hide ×8, Leather scraps ×20, Resin ×20 | 200 kg | Resin |
+| Flying Karve | Forge | Fine wood ×30, Troll hide ×16, Guck ×10, Iron ×6, Chain ×2 | 800 kg | Wood |
+| Sky Drakkar | Artisan table | Fine wood ×50, Linen thread ×40, Tar ×15, Black metal ×8, Chain ×4 | 3000 kg | Coal |
+
+Balloons are built on the ground, not on water, and the Hammer dismantles them only on the ground with nobody aboard.
+Climb aboard by the rope ladder ([E]), even from the water.
+
+**Controls:** [E] on the fire or the tiller takes the controls; [E], jump or attack lets go. W / S — fire stronger /
+weaker: off → slow descent → hold altitude → up (at the Karve's tiller W / S work the sails instead: furled → half → full).
+A / D at the tiller — rudder. Right mouse button at the controls — drop / raise the anchor; anyone can also use [E] on the
+anchor winch. Keys 1–8 at the controls add fuel from the hotbar, otherwise use Shift+E on the fire. Drakkar crank seat:
+[E] — sit, W — crank, S — stop, [E] or jump — stand up.
+
+**Flight:**
+
+- Fire: **Up** climbs at 2.5 m/s (slower with load) on full fuel use, **Hold altitude** uses half, **Slow descent** sinks
+  at 1.5 m/s on a quarter, and with the fire **off** the balloon sinks at 3 m/s. The ceiling is 100 m above the ground or
+  water. An overloaded balloon sinks even at full fire.
+- Wind: 6 m/s in the strongest wind, down to 25% of it in a weak one. The Karve's sails give ×1 / ×1.5 / ×2 of the wind,
+  and its rudder steers up to 120° off the wind. The Drakkar's propeller gives up to 24 m/s with all four rowers and adds
+  up with the wind: four rowers make 18 m/s against the strongest wind. With Moder's power the wind follows the course of
+  the Karve and the Drakkar.
+- Anchor: catches the ground within 10 m and keeps the balloon within 5 m of that point. With the anchor out below 3 m
+  you are in a calm, with no wind at all.
+- Load: players (80 kg plus inventory), tamed creatures and chest contents.
+- Water: balloons land softly, float and move at half speed.
+- Fuel: whoever is at the controls feeds it from their inventory, and the Drakkar also from its chest. An unattended fire
+  goes out after 20 s, so an abandoned balloon lands. The fire warms you like a campfire.
+- The balloon always stays level and rights itself after hitting a tree or a slope. It does not climb into rock or an
+  island hanging over the envelope.
+- Log out mid-flight and you come back on the ground below the balloon. A destroyed balloon falls apart into its
+  resources.
+
+**HUD:** the vanilla ship HUD — wind dial, sail or fire icon, anchor icon, altitude and load. Whoever is at the controls
+also gets the wheel with the fire arrows (one to three bars) and the rudder arc. A short panel at the top shows the
+speeds, wind, rudder, sails or propeller, and key hints.
+
+**Config** (`BepInEx/config/hotairballoons.cfg`, descriptions in English and Russian, synced from the server; changes
+apply without a restart): `MaxAltitude`, `AnchorLength`, `CalmBoundary`, `WindSpeed`, `ClimbSpeed`, `DescentSpeed`,
+`SlowDescentPercent`, `WaterSpeedPercent`, `PlayerWeight`, `CreatureWeight`, `HoldFuelFactor`, `SlowDescentFuelFactor`,
+`RudderMinSpeedPercent`, `AutoFeedFuel`; per balloon `Enabled`, `Capacity`, `FuelItem`, `MaxFuel`, `BurnTimePerFuel`,
+`CraftingStation`, `Recipe`, plus `RudderMaxPercent`, `SailHalfSpeed`, `SailFullSpeed` for the Karve and
+`PropellerSpeed`, `TurnRate` for the Drakkar; `ShowHud` per client.
+
+**For other mods:** `HotAirBalloons.BalloonsApi` is found by reflection, without a hard dependency. Version 2:
+`CeilingProvider` (an absolute ceiling for a position), `FindOnboard`, `Moor` / `Unmoor` / `IsMoored`, `RailPoint`.
+
+**Source:** https://github.com/fionov-a-v/Valheim-HotAirBalloons
+
+**License:** [PolyForm Noncommercial License 1.0.0](LICENSE.md) — free to use, modify and share, no commercial use;
+keep the line `Required Notice: Copyright Fionov Alexander (https://github.com/fionov-a-v/Valheim-HotAirBalloons)` when redistributing.
+
+## Changelog
+
+- **1.3.2** — fire on one bar: slow descent at half the descent speed on a quarter of the fuel (`SlowDescentPercent`,
+  `SlowDescentFuelFactor`). The balloon no longer climbs into rock or an island above the envelope. API for other mods:
+  absolute ceiling and mooring (`BalloonsApi`, version 2). Made for Valheim 1.0.17.
+- **1.3.1** — balloons always stay level; the wheel arrows always show the fire; descent 3 m/s and Karve rudder 120° by
+  default; half speed on water; each Drakkar rower chooses whether to crank; a destroyed balloon drops only its resources;
+  config descriptions in English and Russian; new icon and banner.
+- **1.3.0** — the three balloons: Puffed Troll, Flying Karve with side sails, Sky Drakkar with a propeller; rope ladders;
+  vanilla ship HUD.

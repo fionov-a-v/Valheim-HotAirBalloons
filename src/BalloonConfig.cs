@@ -41,10 +41,12 @@ namespace HotAirBalloons
         public static ConfigEntry<float> WindSpeed;
         public static ConfigEntry<float> ClimbSpeed;
         public static ConfigEntry<float> DescentSpeed;
+        public static ConfigEntry<float> SlowDescentPercent;
         public static ConfigEntry<float> WaterSpeedPercent;
         public static ConfigEntry<float> PlayerWeight;
         public static ConfigEntry<float> CreatureWeight;
         public static ConfigEntry<float> HoldFuelFactor;
+        public static ConfigEntry<float> SlowDescentFuelFactor;
         public static ConfigEntry<float> RudderMinSpeed;
         public static ConfigEntry<bool> AutoFeed;
 
@@ -90,6 +92,10 @@ namespace HotAirBalloons
                 Text("Descent speed with the fire off, m/s.",
                     "Скорость снижения с погашенным огнём, м/с."),
                 new AcceptableValueRange<float>(0.2f, 20f));
+            SlowDescentPercent = Synced(cfg, balance, "SlowDescentPercent", 50f,
+                Text("Speed of the slow descent (fire on one bar), % of DescentSpeed.",
+                    "Скорость плавного снижения (огонь на одно деление), % от DescentSpeed."),
+                new AcceptableValueRange<float>(0f, 100f));
             WaterSpeedPercent = Synced(cfg, balance, "WaterSpeedPercent", 50f,
                 Text("Speed while afloat, % of the speed in the air: applies to everything — wind, sails and propeller.",
                     "Скорость на плаву, % от скорости в воздухе: относится ко всему — ветру, парусам и винту."),
@@ -105,6 +111,10 @@ namespace HotAirBalloons
             HoldFuelFactor = Synced(cfg, balance, "HoldFuelFactor", 0.5f,
                 Text("Fuel use in the \"Hold altitude\" mode relative to the \"Up\" mode.",
                     "Расход топлива в режиме «Держать высоту» относительно режима «Вверх»."),
+                new AcceptableValueRange<float>(0f, 1f));
+            SlowDescentFuelFactor = Synced(cfg, balance, "SlowDescentFuelFactor", 0.25f,
+                Text("Fuel use in the \"Slow descent\" mode relative to the \"Up\" mode.",
+                    "Расход топлива в режиме «Плавно вниз» относительно режима «Вверх»."),
                 new AcceptableValueRange<float>(0f, 1f));
             RudderMinSpeed = Synced(cfg, balance, "RudderMinSpeedPercent", 30f,
                 Text("Speed (in % of the wind speed) with the rudder hard over.",
@@ -272,6 +282,7 @@ namespace HotAirBalloons
             s.WindSpeed = WindSpeed.Value;
             s.ClimbSpeed = ClimbSpeed.Value;
             s.DescentSpeed = DescentSpeed.Value;
+            s.SlowDescentFactor = SlowDescentPercent.Value / 100f;
             s.WaterSpeedFactor = WaterSpeedPercent.Value / 100f;
             s.RudderMaxPercent = k.RudderPercent?.Value ?? 0f;
             s.RudderMinSpeedFactor = RudderMinSpeed.Value / 100f;
