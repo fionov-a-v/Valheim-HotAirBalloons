@@ -12,12 +12,14 @@ namespace HotAirBalloons
     /// <item>Версия 2: швартовка — <see cref="FindOnboard"/>, <see cref="Moor"/>, <see cref="Unmoor"/>,
     /// <see cref="IsMoored"/>. Пришвартованный шар держится у точки (крюк в стене острова): ветер и горелка не
     /// уводят корзину дальше длины верёвки; верёвку от перил видят все.</item>
+    /// <item>Версия 3: пожар — <see cref="Ignite"/>, <see cref="IsBurning"/>, <see cref="NeedsRepair"/> (настройка шаров
+    /// CanBurn), и <see cref="FindAt"/> — шар по точке: у купола нет коллайдера, а снарядам и ударам по площади он нужен.</item>
     /// </list>
     /// Зонд вверх (не подниматься, если над куполом твёрдое) встроен в сам шар и работает без других модов.
     /// </summary>
     public static class BalloonsApi
     {
-        public const int Version = 2;
+        public const int Version = 3;
 
         public static Func<Vector3, float> CeilingProvider;
 
@@ -57,6 +59,51 @@ namespace HotAirBalloons
         {
             BalloonController b = balloon != null ? balloon.GetComponentInParent<BalloonController>() : null;
             return b != null ? b.GetRailPoint() : Vector3.zero;
+        }
+
+        /// <summary>
+        /// Поджечь шар (версия 3): купол горит, шар теряет подъём, после пожара не взлетит до ремонта молотом.
+        /// false — выключено настройкой шаров (CanBurn) или купол уже горит. source — кто поджёг (пока не используется).
+        /// </summary>
+        public static bool Ignite(GameObject balloon, Character source)
+        {
+            BalloonController b = balloon != null ? balloon.GetComponentInParent<BalloonController>() : null;
+            return b != null && b.Ignite();
+        }
+
+        /// <summary>Шар, чей купол (паруса, винт) или корзина ближе radius к точке, — ближайший; иначе null.</summary>
+        public static GameObject FindAt(Vector3 point, float radius)
+        {
+            BalloonController best = null;
+            float bestDistance = float.MaxValue;
+            foreach (BalloonController b in BalloonController.Instances)
+            {
+                if (b == null || b.NView == null || !b.NView.IsValid())
+                {
+                    continue;
+                }
+                float d = b.DistanceTo(point);
+                if (d <= radius && d < bestDistance)
+                {
+                    best = b;
+                    bestDistance = d;
+                }
+            }
+            return best != null ? best.gameObject : null;
+        }
+
+        /// <summary>Купол горит (версия 3).</summary>
+        public static bool IsBurning(GameObject balloon)
+        {
+            BalloonController b = balloon != null ? balloon.GetComponentInParent<BalloonController>() : null;
+            return b != null && b.IsEnvelopeBurning();
+        }
+
+        /// <summary>Купол прогорел или ещё горит: до ремонта молотом шар не поднимается (версия 3).</summary>
+        public static bool NeedsRepair(GameObject balloon)
+        {
+            BalloonController b = balloon != null ? balloon.GetComponentInParent<BalloonController>() : null;
+            return b != null && b.NeedsRepair();
         }
 
         /// <summary>Потолок для позиции; ошибки чужого кода не роняют полёт.</summary>

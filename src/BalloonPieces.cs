@@ -417,6 +417,7 @@ namespace HotAirBalloons
             {
                 ctrl.m_onboardRadius = SimpleBalloonModel.BasketRadius + 0.1f;
                 BuildSimpleFromModel(root, L, ctrl);
+                AddEnvelopeFire(root, ctrl);
                 return root;
             }
             if (kind == BalloonKind.Medium)
@@ -425,6 +426,7 @@ namespace HotAirBalloons
                 ctrl.m_onboardHalfSize = new Vector3(1.9f, 1.4f, 1.9f);
                 ctrl.m_onboardRadius = MediumBalloonModel.BandOuter + 0.05f;
                 BuildMediumFromModel(root, L, ctrl);
+                AddEnvelopeFire(root, ctrl);
                 return root;
             }
 
@@ -439,6 +441,7 @@ namespace HotAirBalloons
                 ctrl.m_onboardHalfBeams[i] = DrakkarModel.HalfBeamAt(z) + 0.3f;
             }
             BuildLargeFromModel(root, L, ctrl);
+            AddEnvelopeFire(root, ctrl);
             return root;
         }
 
@@ -634,6 +637,44 @@ namespace HotAirBalloons
                     Object.DestroyImmediate(c);
                 }
             }
+        }
+
+        /// <summary>
+        /// Пожар на куполе: компонент BalloonFire, пламя — копии огня жаровни по поверхности купола (тепло у них убрано:
+        /// греет только чаша), дым — свои частицы. Всё выключено; включает BalloonFire, пока купол горит.
+        /// </summary>
+        private static void AddEnvelopeFire(GameObject root, BalloonController ctrl)
+        {
+            BalloonFire fire = root.AddComponent<BalloonFire>();
+            GameObject holder = AddChild(root.transform, "EnvelopeFire", Vector3.zero, Quaternion.identity, s_vehicleLayer);
+            Vector3[] points = BalloonShape.FlamePoints(ctrl, out Vector3 smokeCenter, out float smokeRadius);
+            float scale = Mathf.Clamp(smokeRadius * 0.75f, 1.2f, 2.6f);
+            GameObject brazier = PrefabManager.Instance.GetPrefab("piece_brazierfloor01");
+            var flames = new List<GameObject>();
+            for (int i = 0; i < points.Length; i++)
+            {
+                GameObject flame = CloneVanilla(brazier, "_enabled_high", holder.transform);
+                if (flame == null)
+                {
+                    break;
+                }
+                flame.name = "Flame" + i;
+                flame.transform.localPosition = points[i];
+                flame.transform.localScale = Vector3.one * scale;
+                foreach (EffectArea area in flame.GetComponentsInChildren<EffectArea>(true))
+                {
+                    Collider trigger = area.GetComponent<Collider>();
+                    if (trigger != null)
+                    {
+                        Object.DestroyImmediate(trigger);
+                    }
+                    Object.DestroyImmediate(area);
+                }
+                flame.SetActive(false);
+                flames.Add(flame);
+            }
+            fire.m_flames = flames.ToArray();
+            fire.m_smoke = BalloonFire.CreateSmoke(holder.transform, smokeCenter, smokeRadius);
         }
 
         private static EffectList FuelEffects(GameObject firePrefab)

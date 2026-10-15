@@ -121,6 +121,12 @@ namespace HotAirBalloons
         private string m_cachedFuelName;
         private ItemDrop m_cachedFuelItem;
 
+        /// <summary>Купол, паруса и винт «шарами» — для бокового зонда и поиска шара по точке (BalloonsApi.FindAt).</summary>
+        private BalloonShape m_shape;
+
+        /// <summary>Пожар на куполе (может отсутствовать у старых префабов).</summary>
+        private BalloonFire m_fire;
+
         public bool HasRudder => m_kind != BalloonKind.Simple;
         public bool HasSails => m_helm != null && m_settings.HasSails;
 
@@ -163,6 +169,8 @@ namespace HotAirBalloons
             m_nview.Register<float>("HAB_AddFuel", RPC_AddFuel);
 
             BalloonConfig.Fill(m_settings, m_kind);
+            m_fire = GetComponent<BalloonFire>();
+            m_shape = new BalloonShape(this);
             m_loadTimer = Random.Range(0f, 0.5f);
             Instances.Add(this);
         }
@@ -499,7 +507,8 @@ namespace HotAirBalloons
             for (int k = 0; k < n; k++)
             {
                 RaycastHit hit = s_hits[k];
-                if (hit.collider == null || hit.collider.attachedRigidbody != null || hit.distance <= 0f)
+                // Деревья и кусты не держат купол — под кроной шар поднимается свободно.
+                if (hit.collider == null || hit.collider.attachedRigidbody != null || hit.distance <= 0f || BalloonShape.IsSoft(hit.collider))
                 {
                     continue;
                 }
@@ -629,6 +638,7 @@ namespace HotAirBalloons
                 HasRoof = hasRoof,
                 RoofGap = roofGap,
                 Moored = zdo.GetBool(s_moorOn),
+                EnvelopeBroken = m_fire != null && m_fire.NeedsRepair(),
             };
             if (input.Moored)
             {
@@ -641,7 +651,13 @@ namespace HotAirBalloons
             AnchorState prevState = m_anchorMem.State;
             SimResult r = BalloonSim.Step(m_settings, input, ref m_anchorMem);
 
-            m_body.linearVelocity = new Vector3(r.HVel.X, r.VVel, r.HVel.Z);
+            // Купол, паруса и винт не входят в скалы и острова (деревья пропускаем).
+            m_body.linearVelocity = m_shape.ProbeSides(new Vector3(r.HVel.X, r.VVel, r.HVel.Z), dt, r.Friction);
+            // На воде пожар гаснет сразу (купол остаётся прогоревшим).
+            if (m_fire != null && BalloonSim.IsOnWater(water, solid, pos.y))
+            {
+                m_fire.Extinguish();
+            }
             m_body.angularVelocity = new Vector3(0f, r.YawRateDeg * Mathf.Deg2Rad, 0f);
             KeepUpright(dt);
 
@@ -904,7 +920,7 @@ namespace HotAirBalloons
         /// RPC ушёл к бывшему владельцу (у отправителя ещё не обновилось, кто владелец) — пересылаем текущему.
         /// Возвращает true, если этот клиент не владелец и обрабатывать вызов не должен.
         /// </summary>
-        private bool ForwardIfNotOwner(long sender, string method, params object[] args)
+        internal bool ForwardIfNotOwner(long sender, string method, params object[] args)
         {
             if (m_nview.IsOwner())
             {
@@ -1350,8 +1366,24 @@ namespace HotAirBalloons
             string loadColor = load > capacity ? "red" : "white";
             string text = $"{GetDisplayName()}\n$hab_hud_load: <color={loadColor}>{load:0}/{capacity:0} $hab_unit_kg</color>" +
                           $"\n$hab_hud_fuel: {GetFuelDisplayName()} {GetFuel():0.0}/{Config.MaxFuel.Value}";
+            if (m_fire != null)
+            {
+                text += m_fire.GetHoverLine();
+            }
             return Localization.instance.Localize(text);
         }
+
+        /// <summary>Купол горит.</summary>
+        public bool IsEnvelopeBurning() => m_fire != null && m_fire.IsBurning();
+
+        /// <summary>Купол прогорел (или ещё горит): до ремонта молотом шар не поднимается.</summary>
+        public bool NeedsRepair() => m_fire != null && m_fire.NeedsRepair();
+
+        /// <summary>Поджечь купол (с любого клиента). false — выключено настройкой (CanBurn) или купол уже горит.</summary>
+        public bool Ignite() => m_fire != null && m_fire.Ignite();
+
+        /// <summary>Расстояние от точки до купола (парусов, винта) или корзины, м; 0 — внутри.</summary>
+        public float DistanceTo(Vector3 point) => m_shape != null ? m_shape.DistanceTo(point) : Vector3.Distance(point, transform.position);
 
         public string GetHoverName()
         {

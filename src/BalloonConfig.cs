@@ -26,6 +26,7 @@ namespace HotAirBalloons
         public ConfigEntry<float> TurnRate;
         public ConfigEntry<string> Station;
         public ConfigEntry<string> Recipe;
+        public ConfigEntry<string> RepairRecipe;
     }
 
     /// <summary>
@@ -37,6 +38,9 @@ namespace HotAirBalloons
         public static ConfigEntry<float> MaxAltitude;
         public static ConfigEntry<float> AnchorLength;
         public static ConfigEntry<float> CalmBoundary;
+        public static ConfigEntry<bool> CanBurn;
+        public static ConfigEntry<bool> BurnFromFireDamage;
+        public static ConfigEntry<float> BurnDuration;
 
         public static ConfigEntry<float> WindSpeed;
         public static ConfigEntry<float> ClimbSpeed;
@@ -78,6 +82,18 @@ namespace HotAirBalloons
                 Text("Calm boundary, m. With the anchor dropped, below this altitude the balloon feels no wind and does not move horizontally.",
                     "Граница штиля, м. С выпущенным якорем ниже этой высоты шар не чувствует ветра и не двигается по горизонтали."),
                 new AcceptableValueRange<float>(0f, 50f));
+            CanBurn = Synced(cfg, general, "CanBurn", true,
+                Text("Balloons can catch fire. A burning envelope loses its lift, and a burnt one has to be repaired with a hammer " +
+                     "(RepairRecipe of each balloon) before the balloon can fly again.",
+                    "Шары могут загореться. Горящий купол теряет подъёмную силу, а прогоревший нужно починить молотом " +
+                    "(RepairRecipe у каждого шара), прежде чем шар снова взлетит."), null);
+            BurnFromFireDamage = Synced(cfg, general, "BurnFromFireDamage", true,
+                Text("Fire damage to the balloon (fire arrows, fireballs and the like) sets the envelope on fire (needs CanBurn).",
+                    "Огненный урон по шару (горящие стрелы, огненные шары и т. п.) поджигает купол (нужен CanBurn)."), null);
+            BurnDuration = Synced(cfg, general, "BurnDuration", 30f,
+                Text("How long the envelope burns, s. On water the fire goes out at once.",
+                    "Сколько секунд горит купол. На воде огонь сразу гаснет."),
+                new AcceptableValueRange<float>(1f, 600f));
 
             const string balance = "2 - Balance";
             WindSpeed = Synced(cfg, balance, "WindSpeed", 6f,
@@ -134,10 +150,12 @@ namespace HotAirBalloons
 
             s_kinds[(int)BalloonKind.Simple] = BindKind(cfg, "4 - Simple balloon", enabled: true,
                 capacity: 200f, fuel: "Resin", maxFuel: 20, burnTime: 30f, rudder: -1f,
-                station: "piece_workbench", recipe: "Wood:20,TrollHide:8,LeatherScraps:20,Resin:20");
+                station: "piece_workbench", recipe: "Wood:20,TrollHide:8,LeatherScraps:20,Resin:20",
+                repair: "TrollHide:4,LeatherScraps:10");
             s_kinds[(int)BalloonKind.Medium] = BindKind(cfg, "5 - Medium balloon", enabled: true,
                 capacity: 800f, fuel: "Wood", maxFuel: 30, burnTime: 40f, rudder: MediumRudderPercent,
-                station: "forge", recipe: "FineWood:30,TrollHide:16,Guck:10,Iron:6,Chain:2");
+                station: "forge", recipe: "FineWood:30,TrollHide:16,Guck:10,Iron:6,Chain:2",
+                repair: "TrollHide:8,Guck:5");
             KindConfig medium = s_kinds[(int)BalloonKind.Medium];
             medium.SailHalfSpeed = Synced(cfg, "5 - Medium balloon", "SailHalfSpeed", 1.5f,
                 Text("Speed with the sails half out — how many times faster than the wind (furled sails — x1).",
@@ -149,7 +167,8 @@ namespace HotAirBalloons
                 new AcceptableValueRange<float>(0.1f, 10f));
             s_kinds[(int)BalloonKind.Large] = BindKind(cfg, "6 - Large balloon", enabled: true,
                 capacity: 3000f, fuel: "Coal", maxFuel: 40, burnTime: 40f, rudder: -1f,
-                station: "piece_artisanstation", recipe: "FineWood:50,LinenThread:40,Tar:15,BlackMetal:8,Chain:4");
+                station: "piece_artisanstation", recipe: "FineWood:50,LinenThread:40,Tar:15,BlackMetal:8,Chain:4",
+                repair: "LinenThread:20,Tar:8");
             KindConfig large = s_kinds[(int)BalloonKind.Large];
             large.PropellerSpeed = Synced(cfg, "6 - Large balloon", "PropellerSpeed", 24f,
                 Text("Propeller speed, m/s, when all four crank seats are turning (each rower adds a quarter). It adds up with the wind: " +
@@ -222,7 +241,7 @@ namespace HotAirBalloons
         }
 
         private static KindConfig BindKind(ConfigFile cfg, string section, bool enabled, float capacity, string fuel,
-            int maxFuel, float burnTime, float rudder, string station, string recipe)
+            int maxFuel, float burnTime, float rudder, string station, string recipe, string repair)
         {
             var k = new KindConfig
             {
@@ -247,6 +266,9 @@ namespace HotAirBalloons
                     null),
                 Recipe = Synced(cfg, section, "Recipe", recipe,
                     Text("Build resources: Item:Amount, separated by commas.", "Ресурсы для постройки: Предмет:Кол-во через запятую."), null),
+                RepairRecipe = Synced(cfg, section, "RepairRecipe", repair,
+                    Text("Materials to repair a burnt envelope with a hammer: Item:Amount, separated by commas (empty — free).",
+                        "Материалы для ремонта прогоревшего купола молотом: Предмет:Кол-во через запятую (пусто — бесплатно)."), null),
             };
             if (rudder >= 0f)
             {

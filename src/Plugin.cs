@@ -14,7 +14,7 @@ namespace HotAirBalloons
     {
         public const string PluginGuid = "hotairballoons";
         public const string PluginName = "Hot Air Balloons";
-        public const string PluginVersion = "1.3.2";
+        public const string PluginVersion = "1.4.0";
 
         private Harmony m_harmony;
         private GameObject m_runtime;

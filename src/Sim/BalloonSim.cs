@@ -192,6 +192,9 @@ namespace HotAirBalloons.Sim
         public bool HasRoof;
         public float RoofGap;
 
+        /// <summary>Купол горит или прогорел: подъёмной силы нет, шар снижается, как с погашенным огнём, до ремонта.</summary>
+        public bool EnvelopeBroken;
+
         /// <summary>Шар пришвартован (другой мод, BalloonsApi.Moor): точка и длина верёвки от корзины.</summary>
         public bool Moored;
         public V2 MoorPoint;
@@ -318,7 +321,7 @@ namespace HotAirBalloons.Sim
             }
 
             float target;
-            if (!IsBurning(i))
+            if (!IsBurning(i) || i.EnvelopeBroken)
             {
                 target = -s.DescentSpeed;
             }
@@ -455,7 +458,8 @@ namespace HotAirBalloons.Sim
         }
 
         /// <summary>Не дальше radius от center: скорость наружу гасится, вышедший за круг мягко возвращается.</summary>
-        public static V2 LimitToCircle(V2 pos, V2 center, float radius, V2 hvel, float dt)
+        /// <param name="pull">Тянуть ли обратно в круг, если шар уже за ним (стоящий на земле шар верёвка по земле не тащит).</param>
+        public static V2 LimitToCircle(V2 pos, V2 center, float radius, V2 hvel, float dt, bool pull = true)
         {
             V2 offset = pos - center;
             float dist = offset.Length;
@@ -471,7 +475,7 @@ namespace HotAirBalloons.Sim
             {
                 hvel -= n * radial;
             }
-            if (dist > radius)
+            if (dist > radius && pull)
             {
                 hvel -= n * Math.Min((dist - radius) * 1.5f, 3f);
             }
@@ -526,7 +530,8 @@ namespace HotAirBalloons.Sim
                 // по горизонтали — не дальше длины верёвки (за вычетом высоты над/под точкой зацепа)
                 float dy = i.BottomY - i.MoorY;
                 float radius = (float)Math.Sqrt(Math.Max(1f, i.MoorLength * i.MoorLength - dy * dy));
-                hvel = LimitToCircle(i.Pos, i.MoorPoint, radius, hvel, i.Dt);
+                // Стоящий на земле шар верёвка не тащит по земле (например, к подножию высокой мачты), только не пускает дальше.
+                hvel = LimitToCircle(i.Pos, i.MoorPoint, radius, hvel, i.Dt, pull: !r.Friction);
             }
             r.HVel = hvel;
 

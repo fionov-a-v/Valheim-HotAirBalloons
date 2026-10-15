@@ -84,6 +84,7 @@
 | Якорь | ПКМ с любого места управления или [E] на лебёдке у борта (может любой) |
 | Подбросить топливо | [Shift+E] на огне. Если вы уже держитесь за огонь или руль-палку — клавиши 1–8: предмет-топливо с панели быстрого доступа |
 | Отпустить управление | [E]. Прыжок и атака тоже отпускают, как у руля корабля |
+| Починить прогоревший купол | Молот → «Ремонт», удар по шару. Материалы — `RepairRecipe` шара (см. ниже), станок рядом не нужен |
 | Сесть | [E] на сиденье |
 
 Когда топливо кончается, тот, кто держится за огонь или руль-палку, подкидывает его сам из своего инвентаря.
@@ -174,13 +175,30 @@
   где сразу упали бы.
 - **Огонь греет** тех, кто рядом, как ванильный костёр.
 - **Над куполом скала — шар не поднимается.** Зонд от верха купола смотрит на 6 м вверх: под нависающей скалой или
-  островом подъём останавливается, вплотную шар опускается.
+  островом подъём останавливается, вплотную шар опускается. Деревья подъёму не мешают.
+- **Купол не входит в скалы и острова.** Боковой зонд следит за куполом, парусами карви и винтом драккара: ветер
+  не вдавливает их в обрыв — шар упирается и скользит вдоль стены, а влезшего выталкивает. Сквозь деревья, кусты и
+  пни купол проходит, как раньше, чтобы шар не застревал в лесу; постройки сбоку он не чувствует (а сквозь крышу
+  над собой не поднимается).
+- **Пожар** (`CanBurn`). Шар может загореться: от огненного урона по корзине или корпусу — горящие стрелы, огненные
+  шары и т. п. (`BurnFromFireDamage`) — или от другого мода (`BalloonsApi.Ignite`, например огонь драконов
+  «Парящих островов»). Купол горит 30 секунд (`BurnDuration`) — пламя и дым видят все, на воде огонь сразу гаснет —
+  и теряет подъёмную силу: шар снижается, как с погашенным огнём. Прогоревший купол темнеет от копоти, и подняться
+  шар не может, пока купол не починят молотом («Ремонт», удар по шару). Ремонт стоит материалов (`RepairRecipe`):
+  тролль — шкура тролля ×4 и кожаные обрывки ×10, карви — шкура тролля ×8 и слизь ×5, драккар — льняная нить ×20 и
+  дёготь ×8. Станок рядом не нужен: шар мог упасть далеко от дома; запрет охранного камня действует, как обычно.
+  Пока купол горит, чинить нельзя.
 - **Потолок от других модов.** Мод может задать абсолютный потолок (`HotAirBalloons.BalloonsApi.CeilingProvider`:
   позиция → наибольшая высота дна корзины). Так «Парящие острова» не пускают шар выше низкого края своих островов —
   дальше только пешком.
 - **Швартовка от других модов** (`BalloonsApi.Moor` / `Unmoor`, версия API 2). Пришвартованный шар держится у точки:
   ни ветер, ни горелка не уводят корзину дальше длины верёвки, верёвку от перил видят все. В «Парящих островах» так
   работает крюк-кошка: зацепился со шара за стену острова — [E] привязывает верёвку к перилам, [E] на борту — отвязать.
+  Стоящий на земле шар верёвка по земле не тащит — даже к подножию высокой мачты, если она короче, чем до верха.
+- **Для других модов — API версии 3** (`HotAirBalloons.BalloonsApi`, ищется рефлексией, жёсткой зависимости нет):
+  `CeilingProvider`, `FindOnboard`, `Moor` / `Unmoor` / `IsMoored`, `RailPoint` (версия 2) и `Ignite`, `IsBurning`,
+  `NeedsRepair`, `FindAt` (шар, чей купол или корзина ближе заданного радиуса к точке, — для снарядов и ударов
+  по площади: у купола нет коллайдера).
 - **Без присмотра огонь гаснет.** Если на шаре никого нет 20 секунд и якорь не держит, горелка сама переходит в режим
   «вниз», и брошенный шар садится, а не улетает на весь запас топлива.
 
@@ -194,6 +212,9 @@
 | 1 - General | `MaxAltitude` | 100 | Максимальная высота полёта, м |
 | | `AnchorLength` | 10 | Длина якоря, м |
 | | `CalmBoundary` | 3 | Граница штиля, м |
+| | `CanBurn` | true | Шары могут загореться (купол горит, теряет подъём, после пожара — ремонт молотом) |
+| | `BurnFromFireDamage` | true | Огненный урон по шару поджигает купол (нужен `CanBurn`) |
+| | `BurnDuration` | 30 | Сколько секунд горит купол |
 | 2 - Balance | `WindSpeed` | 6 | Скорость при максимальном ветре, м/с |
 | | `ClimbSpeed` / `DescentSpeed` | 2.5 / 3 | Подъём и спуск, м/с |
 | | `SlowDescentPercent` | 50 | Скорость плавного снижения (огонь на одно деление), % от `DescentSpeed` |
@@ -204,6 +225,7 @@
 | | `AutoFeedFuel` | true | Автоподкидывание топлива |
 | 3 - Client | `ShowHud` | true | Панель шара (только у себя) |
 | 4–6 (по шарам) | `Enabled`, `Capacity`, `FuelItem`, `MaxFuel`, `BurnTimePerFuel`, `CraftingStation`, `Recipe` | см. таблицы выше | Параметры каждого шара (4 — тролль, 5 — карви, 6 — драккар) |
+| | `RepairRecipe` | см. «Пожар» | Материалы для ремонта прогоревшего купола молотом (пусто — бесплатно) |
 | 5 - Medium balloon | `RudderMaxPercent` | 66.67 | Насколько руль карви отклоняет курс от ветра, % от 180° (66.67 — 120°) |
 | | `SailHalfSpeed` / `SailFullSpeed` | 1.5 / 2 | Во сколько раз быстрее ветра с парусами наполовину / полностью |
 | 6 - Large balloon | `PropellerSpeed` | 24 | Скорость от винта при всех четырёх гребцах, м/с |
@@ -243,8 +265,9 @@ dotnet run -c Release --project tests/SimTests
   Иконка мода (`package/icon.png`, 256×256) рендерится из тех же моделей: выгрузите все три шара в `out/simple`,
   `out/medium` (`medium 2 0`) и `out/large`, затем `python tests/ModelPreview/icon.py out package/icon.png`.
   Баннер для страницы мода (`media/banner.png`, 1300×372) — та же команда с ключом `--banner`.
-- Физически сталкивается только корзина (корпус). Купол, паруса и винт проходят сквозь деревья и скалы, чтобы шар
-  не застревал в лесу.
+- Физически сталкивается только корзина (корпус). Купол, паруса и винт держат зонды: в скалы, обрывы и острова
+  они не входят, а сквозь деревья и кусты проходят, чтобы шар не застревал в лесу. Постройки купол замечает только
+  над собой.
 - Если камера оказывается внутри купола, купол скрывается, чтобы не загораживать обзор.
 
 ## Лицензия
@@ -305,7 +328,14 @@ anchor winch. Keys 1–8 at the controls add fuel from the hotbar, otherwise use
 - Fuel: whoever is at the controls feeds it from their inventory, and the Drakkar also from its chest. An unattended fire
   goes out after 20 s, so an abandoned balloon lands. The fire warms you like a campfire.
 - The balloon always stays level and rights itself after hitting a tree or a slope. It does not climb into rock or an
-  island hanging over the envelope.
+  island hanging over the envelope, and the envelope, the Karve's sails and the Drakkar's propeller do not sink into
+  cliffs or islands from the side: the balloon stops and slides along the wall. Trees and bushes never stop it;
+  buildings only keep it from climbing through a roof.
+- Fire (`CanBurn`): fire damage to the basket or hull (fire arrows, fireballs; `BurnFromFireDamage`) or another mod
+  (`BalloonsApi.Ignite`) sets the envelope on fire for 30 s (`BurnDuration`; water puts it out). A burning envelope loses
+  its lift, and a burnt one stays sooty and keeps the balloon down until it is repaired with the hammer (Repair, hit the
+  balloon) for materials (`RepairRecipe`): Puffed Troll — Troll hide ×4, Leather scraps ×10; Flying Karve — Troll hide ×8,
+  Guck ×5; Sky Drakkar — Linen thread ×20, Tar ×8. No crafting station is needed; wards apply as usual.
 - Log out mid-flight and you come back on the ground below the balloon. A destroyed balloon falls apart into its
   resources.
 
@@ -314,14 +344,17 @@ also gets the wheel with the fire arrows (one to three bars) and the rudder arc.
 speeds, wind, rudder, sails or propeller, and key hints.
 
 **Config** (`BepInEx/config/hotairballoons.cfg`, descriptions in English and Russian, synced from the server; changes
-apply without a restart): `MaxAltitude`, `AnchorLength`, `CalmBoundary`, `WindSpeed`, `ClimbSpeed`, `DescentSpeed`,
+apply without a restart): `MaxAltitude`, `AnchorLength`, `CalmBoundary`, `CanBurn`, `BurnFromFireDamage`, `BurnDuration`,
+`WindSpeed`, `ClimbSpeed`, `DescentSpeed`,
 `SlowDescentPercent`, `WaterSpeedPercent`, `PlayerWeight`, `CreatureWeight`, `HoldFuelFactor`, `SlowDescentFuelFactor`,
 `RudderMinSpeedPercent`, `AutoFeedFuel`; per balloon `Enabled`, `Capacity`, `FuelItem`, `MaxFuel`, `BurnTimePerFuel`,
-`CraftingStation`, `Recipe`, plus `RudderMaxPercent`, `SailHalfSpeed`, `SailFullSpeed` for the Karve and
+`CraftingStation`, `Recipe`, `RepairRecipe`, plus `RudderMaxPercent`, `SailHalfSpeed`, `SailFullSpeed` for the Karve and
 `PropellerSpeed`, `TurnRate` for the Drakkar; `ShowHud` per client.
 
-**For other mods:** `HotAirBalloons.BalloonsApi` is found by reflection, without a hard dependency. Version 2:
-`CeilingProvider` (an absolute ceiling for a position), `FindOnboard`, `Moor` / `Unmoor` / `IsMoored`, `RailPoint`.
+**For other mods:** `HotAirBalloons.BalloonsApi` is found by reflection, without a hard dependency. Version 3:
+`CeilingProvider` (an absolute ceiling for a position), `FindOnboard`, `Moor` / `Unmoor` / `IsMoored`, `RailPoint`,
+`Ignite`, `IsBurning`, `NeedsRepair` and `FindAt` (the balloon whose envelope or basket is within a radius of a point —
+the envelope has no collider).
 
 **Source:** https://github.com/fionov-a-v/Valheim-HotAirBalloons
 
@@ -330,6 +363,10 @@ keep the line `Required Notice: Copyright Fionov Alexander (https://github.com/f
 
 ## Changelog
 
+- **1.4.0** — the envelope, sails and propeller no longer sink into cliffs and islands (side probe; trees still let it
+  through). Balloons can catch fire (`CanBurn`, `BurnFromFireDamage`, `BurnDuration`): a burnt envelope keeps the balloon
+  down until it is repaired with the hammer for materials (`RepairRecipe`). A grounded moored balloon is no longer dragged
+  along the ground. API version 3: `Ignite`, `IsBurning`, `NeedsRepair`, `FindAt`.
 - **1.3.2** — fire on one bar: slow descent at half the descent speed on a quarter of the fuel (`SlowDescentPercent`,
   `SlowDescentFuelFactor`). The balloon no longer climbs into rock or an island above the envelope. API for other mods:
   absolute ceiling and mooring (`BalloonsApi`, version 2). Made for Valheim 1.0.17.

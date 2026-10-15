@@ -188,11 +188,15 @@ namespace HotAirBalloons
                 string color = load > capacity ? "#ff5050" : "#ffffff";
                 s_load.text = Localization.instance.Localize($"$hab_hud_load: <color={color}>{load:0} / {capacity:0} $hab_unit_kg</color>");
             }
-            // Огонь и топливо в панели больше не показываются — предупреждаем, только когда огонь просят, а гореть нечему.
+            // Огонь и топливо в панели больше не показываются — предупреждаем, когда купол горит или прогорел,
+            // и когда огонь просят, а гореть нечему.
             if (s_warning != null)
             {
                 bool noFuel = balloon.GetMode() != BurnMode.Down && balloon.GetFuel() <= 0f;
-                s_warning.text = noFuel ? Localization.instance.Localize("<color=#ff5050>$hab_no_fuel</color>") : "";
+                string warning = balloon.IsEnvelopeBurning() ? "<color=#ff5030>$hab_envelope_burning</color>"
+                    : balloon.NeedsRepair() ? "<color=#ffa040>$hab_envelope_burnt</color>"
+                    : noFuel ? "<color=#ff5050>$hab_no_fuel</color>" : "";
+                s_warning.text = warning.Length > 0 ? Localization.instance.Localize(warning) : "";
             }
         }
 

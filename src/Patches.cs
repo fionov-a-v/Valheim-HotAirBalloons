@@ -23,6 +23,40 @@ namespace HotAirBalloons
         }
 
         /// <summary>
+        /// Прогоревший купол чинится молотом за материалы (RepairRecipe) — вместо ванильного ремонта, которому нужен
+        /// станок рядом (шар мог упасть далеко от дома). Остальные постройки и целый шар — как обычно.
+        /// </summary>
+        [HarmonyPatch(typeof(Player), "Repair")]
+        [HarmonyPrefix]
+        private static bool Player_Repair(Player __instance, ItemDrop.ItemData toolItem)
+        {
+            Piece piece = __instance.GetHoveringPiece();
+            BalloonFire fire = piece != null ? piece.GetComponent<BalloonFire>() : null;
+            if (fire == null || toolItem == null || !fire.NeedsRepair())
+            {
+                return true;
+            }
+            fire.RepairBy(__instance, toolItem, piece);
+            return false;
+        }
+
+        /// <summary>Огненный урон по шару (горящие стрелы, огненные шары) поджигает купол — настройки CanBurn и BurnFromFireDamage.</summary>
+        [HarmonyPatch(typeof(WearNTear), "RPC_Damage")]
+        [HarmonyPrefix]
+        private static void WearNTear_RPC_Damage(WearNTear __instance, HitData hit)
+        {
+            if (hit == null || hit.m_damage.m_fire < 5f || !BalloonConfig.BurnFromFireDamage.Value)
+            {
+                return;
+            }
+            BalloonFire fire = __instance.GetComponent<BalloonFire>();
+            if (fire != null)
+            {
+                fire.IgniteHere();
+            }
+        }
+
+        /// <summary>
         /// За управлением игра не даёт наводиться на предметы (Player.UpdateHover), поэтому Shift+E по огню недоступен.
         /// Зато топливо можно подбросить с панели быстрого доступа (1–8) или из инвентаря, не отпуская огня (или руля-палки).
         /// </summary>

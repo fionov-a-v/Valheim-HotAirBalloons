@@ -131,6 +131,45 @@ namespace HotAirBalloons.Tests
                 Check("швартовка: шар держится не дальше длины верёвки от зацепа", far < 12.8f && w.I.BottomY < 72.5f, $"far={far:0.0} y={w.I.BottomY:0.0}");
             }
             {
+                // Стоящий шар пришвартован к верху мачты в 13 м короткой верёвкой (короче, чем до верха мачты).
+                var w = new World(Medium());
+                w.I.Mode = BurnMode.Down;
+                w.I.Pos = new V2(8f, 0f);
+                w.I.Moored = true;
+                w.I.MoorPoint = new V2(0f, 0f);
+                w.I.MoorY = 13f;
+                w.I.MoorLength = 10f;
+                w.Run(10f);
+                Check("швартовка стоящего шара: верёвка не тащит его по земле к мачте", Math.Abs(w.I.Pos.X - 8f) < 0.01f && Math.Abs(w.I.Pos.Z) < 0.01f,
+                    $"pos={w.I.Pos}");
+                w.I.Mode = BurnMode.Up;
+                float worst = 0f;
+                w.Run(40f, x =>
+                {
+                    if (x.I.BottomY > 1f)
+                    {
+                        float dy = x.I.BottomY - x.I.MoorY;
+                        float radius = (float)Math.Sqrt(Math.Max(1f, x.I.MoorLength * x.I.MoorLength - dy * dy));
+                        worst = Math.Max(worst, (x.I.Pos - x.I.MoorPoint).Length - radius);
+                    }
+                });
+                Check("взлетел — держится у мачты: верёвка подтягивает и не пускает дальше", w.I.BottomY > 5f && w.I.BottomY < 23.5f && (w.I.Pos - w.I.MoorPoint).Length < 10.5f,
+                    $"y={w.I.BottomY:0.0} d={(w.I.Pos - w.I.MoorPoint).Length:0.0} worst={worst:0.0}");
+            }
+            {
+                var w = new World(Medium());
+                w.I.Mode = BurnMode.Up;
+                w.I.EnvelopeBroken = true;
+                w.I.BottomY = 30f;
+                float maxSink = 0f;
+                w.Run(30f, x => maxSink = Math.Max(maxSink, -x.I.VVel));
+                Check("прогоревший купол: на полном огне не поднимается, садится 3 м/с", w.I.BottomY < 0.01f && Math.Abs(maxSink - 3f) < 0.01f,
+                    $"y={w.I.BottomY:0.00} maxSink={maxSink:0.00}");
+                w.I.EnvelopeBroken = false;
+                w.Run(20f);
+                Check("после ремонта снова взлетает", w.Agl > 20f, $"agl={w.Agl:0.0}");
+            }
+            {
                 var w = new World(Medium());
                 w.I.Mode = BurnMode.Up;
                 w.I.Load = 100f;
