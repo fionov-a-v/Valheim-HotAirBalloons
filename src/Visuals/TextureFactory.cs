@@ -345,17 +345,26 @@ namespace HotAirBalloons.Visuals
         /// </summary>
         public static Texture2D StripedLinen(int seed, float[] bounds)
         {
+            return StripedLinen(seed, bounds, new Color(0.66f, 0.25f, 0.20f), new Color(0.50f, 0.16f, 0.13f),
+                new Color(0.87f, 0.83f, 0.75f), new Color(0.72f, 0.68f, 0.60f), new Color(0.30f, 0.20f, 0.14f), new Color(0.62f, 0.52f, 0.38f));
+        }
+
+        /// <summary>Купол «Небесного ялика»: синие и белые полосы (первая — синяя), швы синевато-тёмные.</summary>
+        public static Texture2D SkiffLinen(int seed, float[] bounds)
+        {
+            return StripedLinen(seed, bounds, new Color(0.22f, 0.36f, 0.62f), new Color(0.15f, 0.26f, 0.49f),
+                new Color(0.88f, 0.87f, 0.83f), new Color(0.74f, 0.73f, 0.69f), new Color(0.12f, 0.15f, 0.24f), new Color(0.55f, 0.6f, 0.7f));
+        }
+
+        /// <summary>Полосатый лён: first — первая полоса (и через одну), second — остальные; Light/Dark — пятна мозаики.</summary>
+        private static Texture2D StripedLinen(int seed, float[] bounds, Color firstLight, Color firstDark, Color secondLight, Color secondDark,
+            Color seamColor, Color stitch)
+        {
             const int w = 512;
             const int h = 2048;
             const int cell = 16;
             Texture2D tex = NewTexture("hab_striped_" + seed, w, h, false);
             var px = new Color32[w * h];
-            var redLight = new Color(0.66f, 0.25f, 0.20f);
-            var redDark = new Color(0.50f, 0.16f, 0.13f);
-            var whiteLight = new Color(0.87f, 0.83f, 0.75f);
-            var whiteDark = new Color(0.72f, 0.68f, 0.60f);
-            var seamColor = new Color(0.30f, 0.20f, 0.14f);
-            var stitch = new Color(0.62f, 0.52f, 0.38f);
             for (int y = 0; y < h; y++)
             {
                 float v = (y + 0.5f) / h;
@@ -369,9 +378,9 @@ namespace HotAirBalloons.Visuals
                     }
                     nearest = Mathf.Min(nearest, Mathf.Abs(v - b));
                 }
-                bool red = (band & 1) == 0;
-                Color light = red ? redLight : whiteLight;
-                Color dark = red ? redDark : whiteDark;
+                bool first = (band & 1) == 0;
+                Color light = first ? firstLight : secondLight;
+                Color dark = first ? firstDark : secondDark;
                 float seamDist = nearest * h;
                 for (int x = 0; x < w; x++)
                 {
@@ -416,12 +425,21 @@ namespace HotAirBalloons.Visuals
         /// </summary>
         public static Texture2D Shield(int seed)
         {
+            return Shield(seed, "hab_shield", new Color(0.62f, 0.20f, 0.16f), new Color(0.85f, 0.80f, 0.70f));
+        }
+
+        /// <summary>Щит «Небесного ялика»: синие и белые четверти, как полосы его купола.</summary>
+        public static Texture2D SkiffShield(int seed)
+        {
+            return Shield(seed, "hab_shield_skiff", new Color(0.2f, 0.33f, 0.58f), new Color(0.86f, 0.85f, 0.8f));
+        }
+
+        private static Texture2D Shield(int seed, string name, Color first, Color second)
+        {
             const int size = 256;
-            Texture2D tex = NewTexture("hab_shield", size, size, false);
+            Texture2D tex = NewTexture(name, size, size, false);
             tex.wrapMode = TextureWrapMode.Clamp;
             var px = new Color32[size * size];
-            var red = new Color(0.62f, 0.20f, 0.16f);
-            var cream = new Color(0.85f, 0.80f, 0.70f);
             var rim = new Color(0.25f, 0.17f, 0.11f);
             for (int y = 0; y < size; y++)
             {
@@ -430,8 +448,8 @@ namespace HotAirBalloons.Visuals
                     float u = (x + 0.5f) / size - 0.5f;
                     float v = (y + 0.5f) / size - 0.5f;
                     float r = Mathf.Sqrt(u * u + v * v) * 2f;
-                    bool quarterRed = (u > 0f) == (v > 0f);
-                    Color c = quarterRed ? red : cream;
+                    bool quarterFirst = (u > 0f) == (v > 0f);
+                    Color c = quarterFirst ? first : second;
                     // Доски щита — вертикальные полосы с зазорами.
                     float board = (u + 0.5f) * 7f;
                     float fb = board - Mathf.Floor(board);

@@ -2,20 +2,21 @@
 
 Автор: Fionov Alexander · исходники: https://github.com/fionov-a-v/Valheim-HotAirBalloons · [English below](#english)
 
-Добавляет три воздушных судна. Все держат высоту огнём, у каждого есть якорь. «Дутый тролль» летит только по ветру,
+Добавляет четыре воздушных судна. Все держат высоту огнём, у каждого есть якорь. «Дутый тролль» летит только по ветру,
 «Летучий карви» — с боковыми парусами и рулём-палкой, «Небесный драккар» — с винтом, который крутят гребцы:
-он летит и против ветра. Сделано для Valheim 1.0.17 на BepInEx 5 и Jötunn 2.30.
+он летит и против ветра. «Небесный ялик» — одноместный кораблик для одиночки: короткая люлька с вороном на носу
+под бело-синим куполом, рукоять двух винтов — у самого пилота. Сделано для Valheim 1.0.17 на BepInEx 5 и Jötunn 2.30.
 
-| | Дутый тролль | Летучий карви | Небесный драккар |
-|---|---|---|---|
-| Эскиз | «Грейд I» | «Грейд II» | «Грейд III» |
-| Места | 1 — стоя под чашей огня, держась за стропу; сидений нет | 3 места на скамье + 2 стоя: у чаши огня и у руля-палки | 4 сиденья с рукоятями (крутят винт) + рулевой (сидя) + 1 стоя у фонаря огня |
-| Грузоподъёмность | 200 кг | 800 кг | 3000 кг |
-| Источник огня / топливо | чаша огня на цепях / смола | фонарь-чаша на столбе / древесина | фонарь огня на стойке / уголь |
-| Руль | нет, только по ветру | руль-палка поворачивает боковые паруса, до 120° от ветра | руль-палка поворачивает корабль (как у ванильных кораблей) |
-| Ход | по ветру | паруса: сложены / наполовину / полностью — x1 / x1,5 / x2 скорости ветра | ветер плюс винт по курсу, вплоть до хода против ветра |
-| Хранилище | — | — | сундук на 8 ячеек |
-| Прочность | 400 | 800 | 1500 |
+| | Дутый тролль | Летучий карви | Небесный драккар | Небесный ялик |
+|---|---|---|---|---|
+| Эскиз | «Грейд I» | «Грейд II» | «Грейд III» | макет «А»: люлька под бело-синим куполом |
+| Места | 1 — стоя под чашей огня, держась за стропу; сидений нет | 3 места на скамье + 2 стоя: у чаши огня и у руля-палки | 4 сиденья с рукоятями (крутят винт) + рулевой (сидя) + 1 стоя у фонаря огня | 1 — пилот у руля-палки, он же крутит рукоять винтов (+ место стоя под фонарём огня, держась за стропу) |
+| Грузоподъёмность | 200 кг | 800 кг | 3000 кг | 1200 кг |
+| Источник огня / топливо | чаша огня на цепях / смола | фонарь-чаша на столбе / древесина | фонарь огня на стойке / уголь | фонарь огня на стойке / уголь |
+| Руль | нет, только по ветру | руль-палка поворачивает боковые паруса, до 120° от ветра | руль-палка поворачивает корабль (как у ванильных кораблей) | как у драккара |
+| Ход | по ветру | паруса: сложены / наполовину / полностью — x1 / x1,5 / x2 скорости ветра | ветер плюс винт по курсу, вплоть до хода против ветра | ветер плюс винт пилота по курсу (12 м/с), и против ветра |
+| Хранилище | — | — | сундук на 8 ячеек | сундук на 8 ячеек |
+| Прочность | 400 | 800 | 1500 | 900 |
 
 ## Установка и запуск
 
@@ -39,6 +40,7 @@
 | Дутый тролль | Верстак | Древесина ×20, Шкура тролля ×8, Кожаные обрывки ×20, Смола ×20 | Чёрный лес, после троллей |
 | Летучий карви | Кузница | Качественная древесина ×30, Шкура тролля ×16, Слизь ×10, Железо ×6, Цепь ×2 | Болото, железо |
 | Небесный драккар | Стол ремесленника | Качественная древесина ×50, Льняная нить ×40, Дёготь ×15, Чёрный металл ×8, Цепь ×4 | Равнины |
+| Небесный ялик | Стол ремесленника | Качественная древесина ×25, Льняная нить ×20, Дёготь ×8, Чёрный металл ×4, Цепь ×2 | Равнины |
 
 Почему так:
 
@@ -56,11 +58,18 @@
   голова на форштевне, щиты по бортам, железные бандажи («усиленный корпус»). Посередине — фонарь огня на стойке,
   на корме — перо руля с рулём-палкой и винт. Лён, дёготь, чёрный металл и цепи — стол ремесленника собирают из слёз
   дракона, это тот же этап, что и лён.
+- «Небесный ялик» — одноместный кораблик для одиночки (макет «А»): короткая пузатая люлька 3,4 × 1,5 м — обшивка
+  досками, подъём к штевням, на форштевне — резной деревянный ворон, по синему с белым щиту на борт. Купол — бело-синий
+  «мяч» ⌀2,6 × 6,2 м, стропы веером от поясного каната к планширю. Фонарь огня висит на цепях под куполом, без стойки:
+  под ним проходят к сундуку на носу, а у огня стоят, держась за стропу. Сидений гребцов нет: перед пилотом — кривошип,
+  им пилот сам крутит два маленьких винта на выносных балках по углам кормы. Грузоподъёмность — 1200 кг (у драккара
+  3000), стоит половину драккара.
 
 Как ставить:
 
 - Поставьте станок на ровном открытом месте, чтобы над ним было чистое небо. Высота — 7–9 м; «Летучий карви» с парусами
-  в размахе около 8 м, «Небесный драккар» — около 12 м в длину (корпус — около 9 м).
+  в размахе около 8 м, «Небесный драккар» — около 12 м в длину (корпус — около 9 м), «Небесный ялик» — около 6,3 м
+  в длину (корпус — 3,4 м) и около 6 м в высоту.
 - Сам шар ставьте на землю рядом со станком. Пологий склон подойдёт, крутой — нет.
 - На воду шары не ставятся.
 - Молотом шар разбирается только на земле и когда на борту никого нет. Ресурсы при этом возвращаются.
@@ -76,11 +85,12 @@
 
 | Действие | Как |
 |---|---|
-| Взяться за управление | [E] на огне (чаша, фонарь) или на руле-палке («Летучий карви», «Небесный драккар»). Если вы снаружи, игрок сам встанет (сядет) на место |
+| Взяться за управление | [E] на огне (чаша, фонарь) или на руле-палке («Летучий карви», «Небесный драккар», «Небесный ялик»). Если вы снаружи, игрок сам встанет (сядет) на место |
 | Огонь сильнее / слабее | W / S у огня. Режимы: вниз (огонь погашен) → плавно вниз → держать высоту → вверх. У драккара — и с руля-палки |
 | Паруса («Летучий карви») | W / S у руля-палки: сложены → наполовину → полностью |
 | Руль | A / D у руля-палки: у карви — поворачивает паруса (курс отклоняется от ветра), у драккара — поворачивает корабль |
-| Крутить винт («Небесный драккар») | [E] на сиденье с рукоятью — сесть, W — крутить, S — перестать. Каждый гребец решает за себя; севший сначала не крутит. Встать — [E] или прыжок |
+| Крутить винт («Небесный драккар») | [E] на сиденье с рукоятью — сесть, W — крутить, S — перестать. Каждый гребец решает за себя; севший сначала не крутит. Кручение тратит выносливость, как бег: кончилась — рукоять встала, снова крутить — нажмите W ещё раз. Встать — [E] или прыжок |
+| Крутить винты («Небесный ялик») | у руля-палки: Shift+W — крутить рукоять, Shift+S — перестать (W/S без Shift — огонь, как у руля драккара). Выносливость кончилась — рукоять встала, снова — Shift+W. Отпустил руль — рукоять остановилась |
 | Якорь | ПКМ с любого места управления или [E] на лебёдке у борта (может любой) |
 | Подбросить топливо | [Shift+E] на огне. Если вы уже держитесь за огонь или руль-палку — клавиши 1–8: предмет-топливо с панели быстрого доступа |
 | Отпустить управление | [E]. Прыжок и атака тоже отпускают, как у руля корабля |
@@ -135,13 +145,18 @@
   - высота над морем считается от поверхности воды (и потолок тоже);
   - на воду шар садится мягко — уходит под воду не глубже ~15 см и всплывает; дальше держится на плаву при любом
     режиме огня, а на «вверх» взлетает (если не перегружен);
+  - драккар и ялик садятся в воду корпусом, как лодки: киль уходит на 0,45 м под воду (у ялика — на 0,33 м), палуба
+    остаётся сухой — при посадке корпус тормозит о воду и ниже ватерлинии не проваливается. На плаву корабль поднимается
+    и опускается вместе с волнами и покачивается на них (крен и дифферент до 6°). Если волна всё же захлестнёт палубу,
+    внутри корпуса воды не видно (маска воды, как у ванильных кораблей), а стоящие на палубе не мокнут и не плывут.
+    Корзины тролля и карви стоят на поверхности — их пол ниже ватерлинии;
   - на плаву шар движется вдвое медленнее, чем в воздухе (`WaterSpeedPercent`, 50%), — это касается всего: ветра,
     парусов карви и винта драккара (драккар с гребцами идёт как лодка, но вдвое медленнее, чем летит). Взлетел —
     скорость снова прежняя;
   - брошенный на воде якорь останавливает шар: у воды он ниже границы штиля, а там с выпущенным якорем ветер не действует.
     Если дно не глубже длины якоря, якорь ещё и цепляется;
   - на мелководье шар может сесть днищем на дно, но ветер тащит его дальше;
-  - на волнах шар не качается — стоит на уровне моря;
+  - корзины на волнах не качаются — стоят на уровне моря;
   - строить шары на воде нельзя; забраться на борт из воды — по трапу.
 - **Паруса «Летучего карви»** разгоняют его относительно ветра: сложены — x1, наполовину — x1,5, полностью — x2
   (`SailHalfSpeed`, `SailFullSpeed`). Складываются и раскрываются плавно, как веер: реи сходятся к средней, перепонки
@@ -167,9 +182,19 @@
   - по ветру четверо дают 30 м/с.
   Руль-палкой корабль поворачивают, как ванильный: руль до упора — `TurnRate` (20°) в секунду; сам по ходу драккар не
   разворачивается. На земле и в штиль у якоря винт не двигает корабль, на воде — вдвое слабее, как и всё на плаву.
-- **Шар всегда висит ровно** — в полёте, у якоря, в штиль и на земле: вращаться он может только вокруг вертикали.
+- **Выносливость и навык гребцов** (`CrankStamina`, включено). Кручение рукояти тратит выносливость столько же, сколько бег:
+  10 в секунду без навыка бега, 5 — на сотом уровне; снаряжение и эффекты, меняющие расход на бег, действуют и здесь.
+  Пока крутите, выносливость не восстанавливается. Кончилась — рукоять останавливается, мигает полоска выносливости;
+  снова крутить — отдышаться и нажать W ещё раз (у пилота ялика — Shift+W): удерживать клавишу мало. Гребцы драккара
+  могут крутить по очереди, пока остальные отдыхают. Навык бега при этом растёт, как при беге. С выключенной настройкой
+  рукоять крутится даром и навык не качает.
+- **Винты ялика.** Рукоять у пилота: пока он крутит (Shift+W), винты дают `PropellerSpeed` (12 м/с) по курсу, и так же
+  векторно складывается с ветром: в штиль — 12 м/с куда угодно, против самого сильного ветра — 6 м/с вперёд, по ветру —
+  18 м/с. Поворот — `TurnRate` (25°) в секунду. Остальное — как у драккара.
+- **Шар всегда висит ровно** — в полёте, у якоря, в штиль и на земле: вращаться он может только вокруг вертикали
+  (только драккар и ялик на воде покачиваются на волнах).
   Если удар о дерево или склон всё же наклонил его, шар сам плавно выпрямляется — за секунду-другую, курс при этом не меняется.
-- **Сила Модера** у кого-то на борту карви или драккара: ветер дует вдоль курса, как у корабля.
+- **Сила Модера** у кого-то на борту карви, драккара или ялика: ветер дует вдоль курса, как у корабля.
 - **Дождь.** Купол крышей не считается, поэтому в дождь на борту мокнут.
 - **Выход из игры в полёте.** При следующем входе вы окажетесь на земле под шаром (над морем — на воде), а не в воздухе,
   где сразу упали бы.
@@ -186,7 +211,7 @@
   и теряет подъёмную силу: шар снижается, как с погашенным огнём. Прогоревший купол темнеет от копоти, и подняться
   шар не может, пока купол не починят молотом («Ремонт», удар по шару). Ремонт стоит материалов (`RepairRecipe`):
   тролль — шкура тролля ×4 и кожаные обрывки ×10, карви — шкура тролля ×8 и слизь ×5, драккар — льняная нить ×20 и
-  дёготь ×8. Станок рядом не нужен: шар мог упасть далеко от дома; запрет охранного камня действует, как обычно.
+  дёготь ×8, ялик — льняная нить ×10 и дёготь ×4. Станок рядом не нужен: шар мог упасть далеко от дома; запрет охранного камня действует, как обычно.
   Пока купол горит, чинить нельзя.
 - **Потолок от других модов.** Мод может задать абсолютный потолок (`HotAirBalloons.BalloonsApi.CeilingProvider`:
   позиция → наибольшая высота дна корзины). Так «Парящие острова» не пускают шар выше низкого края своих островов —
@@ -223,13 +248,16 @@
 | | `HoldFuelFactor` / `SlowDescentFuelFactor` | 0.5 / 0.25 | Расход в режимах «держать высоту» и «плавно вниз» (от полного) |
 | | `RudderMinSpeedPercent` | 30 | Скорость на полном отклонении руля, % |
 | | `AutoFeedFuel` | true | Автоподкидывание топлива |
+| | `CrankStamina` | true | Кручение рукояти винта тратит выносливость и качает навык бега, как бег; выносливость кончилась — рукоять встаёт до нового нажатия W |
 | 3 - Client | `ShowHud` | true | Панель шара (только у себя) |
-| 4–6 (по шарам) | `Enabled`, `Capacity`, `FuelItem`, `MaxFuel`, `BurnTimePerFuel`, `CraftingStation`, `Recipe` | см. таблицы выше | Параметры каждого шара (4 — тролль, 5 — карви, 6 — драккар) |
+| 4–7 (по шарам) | `Enabled`, `Capacity`, `FuelItem`, `MaxFuel`, `BurnTimePerFuel`, `CraftingStation`, `Recipe` | см. таблицы выше | Параметры каждого шара (4 — тролль, 5 — карви, 6 — драккар, 7 — ялик) |
 | | `RepairRecipe` | см. «Пожар» | Материалы для ремонта прогоревшего купола молотом (пусто — бесплатно) |
 | 5 - Medium balloon | `RudderMaxPercent` | 66.67 | Насколько руль карви отклоняет курс от ветра, % от 180° (66.67 — 120°) |
 | | `SailHalfSpeed` / `SailFullSpeed` | 1.5 / 2 | Во сколько раз быстрее ветра с парусами наполовину / полностью |
 | 6 - Large balloon | `PropellerSpeed` | 24 | Скорость от винта при всех четырёх гребцах, м/с |
 | | `TurnRate` | 20 | Поворот драккара рулём до упора, градусов в секунду |
+| 7 - Solo balloon | `PropellerSpeed` | 12 | Скорость от винта, пока пилот ялика крутит рукоять, м/с |
+| | `TurnRate` | 25 | Поворот ялика рулём до упора, градусов в секунду |
 
 При обновлении мода значения, которые у вас остались от прежних умолчаний (ветер 12, снижение 2 или 4, топливо карви —
 уголь, руль карви — 25% или 30%, топливо драккара — древесина), сами меняются на новые; всё, что вы настроили по-своему,
@@ -259,9 +287,9 @@ dotnet run -c Release --project tests/SimTests
 ## Ограничения
 
 - Модели строятся кодом, без ассетов Unity: корзины и корпус, купола, канаты, якорь, рули, паруса, винт, щиты.
-  Огонь, звук огня и сундук взяты из ванильных жаровни и сундука, трапы работают как ванильная лестница корабля. Все три модели можно выгрузить и
+  Огонь, звук огня и сундук взяты из ванильных жаровни и сундука, трапы работают как ванильная лестница корабля. Все четыре модели можно выгрузить и
   посмотреть без игры: `dotnet run --project tests/ModelPreview -- out simple` (или `out medium 2 0` — паруса 0/1/2
-  и руль от −1 до 1, или `out large`) и `python tests/ModelPreview/render.py out out/sheet.png` (нужны numpy и Pillow).
+  и руль от −1 до 1, `out large` или `out solo`) и `python tests/ModelPreview/render.py out out/sheet.png` (нужны numpy и Pillow).
   Иконка мода (`package/icon.png`, 256×256) рендерится из тех же моделей: выгрузите все три шара в `out/simple`,
   `out/medium` (`medium 2 0`) и `out/large`, затем `python tests/ModelPreview/icon.py out package/icon.png`.
   Баннер для страницы мода (`media/banner.png`, 1300×372) — та же команда с ключом `--banner`.
@@ -287,9 +315,10 @@ Required Notice: Copyright Fionov Alexander (https://github.com/fionov-a-v/Valhe
 <a id="english"></a>
 # Hot Air Balloons — mod for Valheim
 
-Three flying craft for Valheim. All of them hold altitude with fire and carry an anchor. The **Puffed Troll** flies only
+Four flying craft for Valheim. All of them hold altitude with fire and carry an anchor. The **Puffed Troll** flies only
 with the wind, the **Flying Karve** has side sails and a tiller, and the **Sky Drakkar** has a propeller cranked by its
-rowers, so it flies even against the wind. Made for Valheim 1.0.17 with BepInEx 5 and Jötunn 2.30. English and Russian
+rowers, so it flies even against the wind. The **Sky Skiff** is a one-seat craft for solo players: a short skiff with
+a raven figurehead under a white-and-blue envelope; the pilot turns the crank of its two small propellers from the tiller. Made for Valheim 1.0.17 with BepInEx 5 and Jötunn 2.30. English and Russian
 in-game text.
 
 **Install:** needs BepInExPack Valheim and Jötunn. Copy `plugins/HotAirBalloons.dll` into `BepInEx/plugins/`. Every
@@ -302,6 +331,7 @@ player and the dedicated server must have the mod; settings are synced from the 
 | Puffed Troll | Workbench | Wood ×20, Troll hide ×8, Leather scraps ×20, Resin ×20 | 200 kg | Resin |
 | Flying Karve | Forge | Fine wood ×30, Troll hide ×16, Guck ×10, Iron ×6, Chain ×2 | 800 kg | Wood |
 | Sky Drakkar | Artisan table | Fine wood ×50, Linen thread ×40, Tar ×15, Black metal ×8, Chain ×4 | 3000 kg | Coal |
+| Sky Skiff | Artisan table | Fine wood ×25, Linen thread ×20, Tar ×8, Black metal ×4, Chain ×2 | 1200 kg | Coal |
 
 Balloons are built on the ground, not on water, and the Hammer dismantles them only on the ground with nobody aboard.
 Climb aboard by the rope ladder ([E]), even from the water.
@@ -310,7 +340,10 @@ Climb aboard by the rope ladder ([E]), even from the water.
 weaker: off → slow descent → hold altitude → up (at the Karve's tiller W / S work the sails instead: furled → half → full).
 A / D at the tiller — rudder. Right mouse button at the controls — drop / raise the anchor; anyone can also use [E] on the
 anchor winch. Keys 1–8 at the controls add fuel from the hotbar, otherwise use Shift+E on the fire. Drakkar crank seat:
-[E] — sit, W — crank, S — stop, [E] or jump — stand up.
+[E] — sit, W — crank, S — stop, [E] or jump — stand up. Sky Skiff pilot: Shift+W — turn the crank, Shift+S — stop
+(W / S without Shift work the fire). Cranking drains stamina and trains the Run skill like running (10 stamina/s, half
+that at Run 100); when the stamina runs out, the crank stops until you press W (the pilot — Shift+W) again
+(`CrankStamina`, on by default).
 
 **Flight:**
 
@@ -319,12 +352,15 @@ anchor winch. Keys 1–8 at the controls add fuel from the hotbar, otherwise use
   water. An overloaded balloon sinks even at full fire.
 - Wind: 6 m/s in the strongest wind, down to 25% of it in a weak one. The Karve's sails give ×1 / ×1.5 / ×2 of the wind,
   and its rudder steers up to 120° off the wind. The Drakkar's propeller gives up to 24 m/s with all four rowers and adds
-  up with the wind: four rowers make 18 m/s against the strongest wind. With Moder's power the wind follows the course of
-  the Karve and the Drakkar.
+  up with the wind: four rowers make 18 m/s against the strongest wind. The Sky Skiff's crank gives 12 m/s: 6 m/s against
+  the strongest wind. With Moder's power the wind follows the course of the Karve, the Drakkar and the Skiff.
 - Anchor: catches the ground within 10 m and keeps the balloon within 5 m of that point. With the anchor out below 3 m
   you are in a calm, with no wind at all.
 - Load: players (80 kg plus inventory), tamed creatures and chest contents.
-- Water: balloons land softly, float and move at half speed.
+- Water: balloons land softly, float and move at half speed. The Drakkar and the Skiff sit in the water like boats (the
+  keel 0.45 m / 0.33 m under the surface, the deck stays dry), rise and fall with the waves and rock on them (up to 6°);
+  water is not drawn inside the hull (a water mask like on vanilla ships) and standing on the deck doesn't count as being
+  in the water. The baskets float on the surface.
 - Fuel: whoever is at the controls feeds it from their inventory, and the Drakkar also from its chest. An unattended fire
   goes out after 20 s, so an abandoned balloon lands. The fire warms you like a campfire.
 - The balloon always stays level and rights itself after hitting a tree or a slope. It does not climb into rock or an
@@ -335,7 +371,7 @@ anchor winch. Keys 1–8 at the controls add fuel from the hotbar, otherwise use
   (`BalloonsApi.Ignite`) sets the envelope on fire for 30 s (`BurnDuration`; water puts it out). A burning envelope loses
   its lift, and a burnt one stays sooty and keeps the balloon down until it is repaired with the hammer (Repair, hit the
   balloon) for materials (`RepairRecipe`): Puffed Troll — Troll hide ×4, Leather scraps ×10; Flying Karve — Troll hide ×8,
-  Guck ×5; Sky Drakkar — Linen thread ×20, Tar ×8. No crafting station is needed; wards apply as usual.
+  Guck ×5; Sky Drakkar — Linen thread ×20, Tar ×8; Sky Skiff — Linen thread ×10, Tar ×4. No crafting station is needed; wards apply as usual.
 - Log out mid-flight and you come back on the ground below the balloon. A destroyed balloon falls apart into its
   resources.
 
@@ -347,9 +383,9 @@ speeds, wind, rudder, sails or propeller, and key hints.
 apply without a restart): `MaxAltitude`, `AnchorLength`, `CalmBoundary`, `CanBurn`, `BurnFromFireDamage`, `BurnDuration`,
 `WindSpeed`, `ClimbSpeed`, `DescentSpeed`,
 `SlowDescentPercent`, `WaterSpeedPercent`, `PlayerWeight`, `CreatureWeight`, `HoldFuelFactor`, `SlowDescentFuelFactor`,
-`RudderMinSpeedPercent`, `AutoFeedFuel`; per balloon `Enabled`, `Capacity`, `FuelItem`, `MaxFuel`, `BurnTimePerFuel`,
+`RudderMinSpeedPercent`, `AutoFeedFuel`, `CrankStamina`; per balloon `Enabled`, `Capacity`, `FuelItem`, `MaxFuel`, `BurnTimePerFuel`,
 `CraftingStation`, `Recipe`, `RepairRecipe`, plus `RudderMaxPercent`, `SailHalfSpeed`, `SailFullSpeed` for the Karve and
-`PropellerSpeed`, `TurnRate` for the Drakkar; `ShowHud` per client.
+`PropellerSpeed`, `TurnRate` for the Drakkar and the Skiff; `ShowHud` per client.
 
 **For other mods:** `HotAirBalloons.BalloonsApi` is found by reflection, without a hard dependency. Version 3:
 `CeilingProvider` (an absolute ceiling for a position), `FindOnboard`, `Moor` / `Unmoor` / `IsMoored`, `RailPoint`,
@@ -362,6 +398,16 @@ the envelope has no collider).
 keep the line `Required Notice: Copyright Fionov Alexander (https://github.com/fionov-a-v/Valheim-HotAirBalloons)` when redistributing.
 
 ## Changelog
+
+- **1.5.0** — new **Sky Skiff** for solo players: a short skiff (3.4 × 1.5 m) with a carved raven on the stem under
+  a white-and-blue envelope (⌀2.6 × 6.2 m); the fire lantern hangs on chains, so you walk under it to the chest; two small
+  propellers at the stern corners. 1200 kg, the pilot turns the propeller crank from the tiller (Shift+W / Shift+S),
+  costs half of the Drakkar. Turning a crank now drains stamina and trains the Run skill like running: when the stamina
+  runs out, the crank stops until you press W again (`CrankStamina`, on by default). The Drakkar and the Skiff now sit
+  in the water like boats, follow the waves and rock on them; they land without dipping the deck under, water is not
+  drawn inside the hull (a water mask like on vanilla ships) and standing on the deck doesn't count as being in the
+  water. The Drakkar's hull is closed at the bow and stern (no more see-through gaps next to the stems), its shields
+  follow the hull and no longer sink into the planks, and the dragon head grows out of the neck in one piece.
 
 - **1.4.0** — the envelope, sails and propeller no longer sink into cliffs and islands (side probe; trees still let it
   through). Balloons can catch fire (`CanBurn`, `BurnFromFireDamage`, `BurnDuration`): a burnt envelope keeps the balloon

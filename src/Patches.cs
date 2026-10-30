@@ -40,6 +40,33 @@ namespace HotAirBalloons
             return false;
         }
 
+        /// <summary>
+        /// На борту драккара или ялика — не «в воде», как на ванильном корабле (Character.CalculateLiquidDepth): волна,
+        /// захлестнувшая палубу (внутри корпуса её и не видно — маска воды), не мочит и не заставляет плыть.
+        /// </summary>
+        [HarmonyPatch(typeof(Character), "CalculateLiquidDepth")]
+        [HarmonyPostfix]
+        private static void Character_CalculateLiquidDepth(Character __instance, ref float ___m_cashedInLiquidDepth, Rigidbody ___m_lastGroundBody)
+        {
+            if (___m_cashedInLiquidDepth <= 0f)
+            {
+                return;
+            }
+            BalloonController balloon = null;
+            if (__instance.IsAttached() && __instance is Player player && player.GetAttachPoint() != null)
+            {
+                balloon = player.GetAttachPoint().GetComponentInParent<BalloonController>();
+            }
+            else if (___m_lastGroundBody != null && __instance.IsOnGround())
+            {
+                balloon = ___m_lastGroundBody.GetComponent<BalloonController>();
+            }
+            if (balloon != null && balloon.FloatsAsBoat && balloon.IsInsideBasket(__instance.transform.position))
+            {
+                ___m_cashedInLiquidDepth = 0f;
+            }
+        }
+
         /// <summary>Огненный урон по шару (горящие стрелы, огненные шары) поджигает купол — настройки CanBurn и BurnFromFireDamage.</summary>
         [HarmonyPatch(typeof(WearNTear), "RPC_Damage")]
         [HarmonyPrefix]

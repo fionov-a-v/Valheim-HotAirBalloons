@@ -139,6 +139,12 @@ namespace HotAirBalloons.Sim
         /// <summary>На плаву шар движется медленнее, чем в воздухе: доля скорости — для всего (ветер, паруса, винт).</summary>
         public float WaterSpeedFactor = 0.5f;
 
+        /// <summary>
+        /// Осадка корпуса, м: на плаву низ (киль) стоит на столько ниже поверхности воды — драккар и ялик сидят в воде,
+        /// как лодки. У корзин 0: их пол ниже ватерлинии, и на борту бы мокли.
+        /// </summary>
+        public float Draft;
+
         public float AnchorDropSpeed = 6f;
         public bool AlignToTravel;
         public float MaxYawRate = 20f;
@@ -234,6 +240,10 @@ namespace HotAirBalloons.Sim
     public static class BalloonSim
     {
         private const float WaterStopDepth = 0.15f;
+
+        /// <summary>Корпус (драккар, ялик) тормозит о воду раньше — с этой высоты над ватерлинией — и почти не проваливается под неё.</summary>
+        private const float HullBrakeHeight = 0.3f;
+        private const float HullStopDepth = 0.05f;
 
         public static float Agl(in SimInput i) => i.BottomY - Math.Max(i.SolidY, i.WaterY);
 
@@ -363,10 +373,10 @@ namespace HotAirBalloons.Sim
                 target = Math.Min(target, (i.RoofGap - 1.5f) * 0.5f);
             }
 
-            // Корзина держится на воде.
+            // Корзина держится на воде, корпус — на своей ватерлинии (ниже поверхности на осадку).
             if (i.WaterY >= i.SolidY)
             {
-                float gap = i.BottomY - i.WaterY;
+                float gap = i.BottomY - (i.WaterY - s.Draft);
                 if (gap < 0f)
                 {
                     target = Math.Max(target, Math.Min(-gap * 2f, 2f));
@@ -493,21 +503,30 @@ namespace HotAirBalloons.Sim
             r.TargetVVel = VerticalTarget(s, i, out r.Overloaded);
 
             // Вода, в отличие от земли, не коллайдер: касание воды гасит снижение резко, как удар о поверхность, —
-            // при любой скорости снижения корзина уходит под воду не глубже ~15 см.
-            bool touchingWater = i.WaterY >= i.SolidY && i.BottomY - i.WaterY < 0.1f && i.VVel < 0f;
+            // при любой скорости снижения корзина уходит под воду не глубже ~15 см. Корпус начинает тормозить раньше
+            // и уходит ниже ватерлинии лишь на ~5 см: иначе палуба при посадке на миг оказывалась бы под водой.
+            float floatY = i.WaterY - s.Draft;
+            bool hull = s.Draft > 0f;
+            bool touchingWater = i.WaterY >= i.SolidY && i.BottomY - floatY < (hull ? HullBrakeHeight : 0.1f) && i.VVel < 0f;
             float vTarget = r.TargetVVel;
             float vAccel = s.VerticalAccel;
             if (touchingWater)
             {
-                float room = Math.Max(0.05f, i.BottomY - i.WaterY + WaterStopDepth);
+                float room = Math.Max(0.05f, i.BottomY - floatY + (hull ? HullStopDepth : WaterStopDepth));
                 vAccel = Math.Max(s.WaterStopAccel, i.VVel * i.VVel / (2f * room));
                 vTarget = Math.Max(vTarget, 0f);
             }
             r.VVel = MoveTowards(i.VVel, vTarget, vAccel * i.Dt);
+            // Корпус на плаву, огонь не поднимает: держится на ватерлинии и ходит вверх-вниз вместе с волнами
+            // (уровень воды с волнами даёт игра). Удар о воду при посадке гасится выше, сюда — уже медленно.
+            if (s.Draft > 0f && i.WaterY >= i.SolidY + 0.05f && vTarget <= 0.01f && i.BottomY - floatY < 0.25f && i.VVel > -1.5f)
+            {
+                r.VVel = Clamp((floatY - i.BottomY) * 4f, -2f, 2f);
+            }
 
             UpdateAnchor(s, i, ref a);
 
-            bool onWater = IsOnWater(i.WaterY, i.SolidY, i.BottomY);
+            bool onWater = IsOnWater(i.WaterY, i.SolidY, i.BottomY, s.Draft);
             r.Calm = i.AnchorOut && r.Agl < s.CalmBoundary;
             r.Friction = i.Grounded && !onWater;
 
@@ -552,8 +571,9 @@ namespace HotAirBalloons.Sim
             return r;
         }
 
-        /// <summary>На плаву: под корзиной вода глубже 5 см, дно не выше 0,3 м над ней.</summary>
-        public static bool IsOnWater(float waterY, float solidY, float bottomY) => waterY > solidY + 0.05f && bottomY - waterY < 0.3f;
+        /// <summary>На плаву: под корзиной вода глубже 5 см, дно не выше 0,3 м над ватерлинией (поверхность минус осадка).</summary>
+        public static bool IsOnWater(float waterY, float solidY, float bottomY, float draft = 0f) =>
+            waterY > solidY + 0.05f && bottomY - (waterY - draft) < 0.3f;
 
         public static float Clamp(float v, float min, float max) => v < min ? min : (v > max ? max : v);
 

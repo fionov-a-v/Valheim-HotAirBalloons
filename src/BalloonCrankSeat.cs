@@ -5,8 +5,10 @@ namespace HotAirBalloons
     /// <summary>
     /// Сиденье с рукоятью драккара. Устроено как место управления (IDoodadController, как руль корабля): [E] — сесть;
     /// сидя, W — крутить, S — не крутить (каждый гребец решает за себя, севший сначала не крутит); встать — [E] или прыжок.
-    /// Решение каждый клиент пишет в ZDO своего персонажа (номер сиденья, пока крутит), владелец шара собирает это
-    /// в маску сидений (BalloonController); здесь же — анимация: рукоять крутится, пока бит сиденья в маске.
+    /// Кручение тратит выносливость и качает навык бега, как бег (CrankStamina): выдохся — рукоять встаёт, снова крутить —
+    /// новым нажатием W (у пилота ялика — Shift+W). Решение каждый клиент пишет в ZDO своего персонажа (номер сиденья, пока крутит),
+    /// владелец шара собирает это в маску сидений (BalloonController); здесь же — анимация: рукоять крутится, пока бит
+    /// сиденья в маске.
     /// </summary>
     public class BalloonCrankSeat : MonoBehaviour, Hoverable, Interactable, IDoodadController
     {
@@ -29,10 +31,76 @@ namespace HotAirBalloons
         private static BalloonCrankSeat s_localSeat;
         private static bool s_localCranking;
 
+        /// <summary>W был нажат в прошлый раз: крутить начинают нажатием, а не удержанием.</summary>
+        private static bool s_forwardHeld;
+
+        /// <summary>Сколько крутит без перерыва на прокачку: навык бега растёт раз в секунду, как у бега.</summary>
+        private static float s_runSkillTimer;
+
         public BalloonController Controller => m_ctrl;
 
         /// <summary>Локальный игрок сейчас крутит рукоять.</summary>
         public static bool LocalCranking => s_localSeat != null && s_localCranking;
+
+        /// <summary>Локальный игрок у руля «Небесного ялика» и крутит его рукоять (сменил место или встал — сначала не крутит).</summary>
+        private static BalloonStation s_pilotStation;
+        private static bool s_pilotCranking;
+
+        public static bool LocalPilotCranking => s_pilotStation != null && s_pilotCranking;
+
+        /// <summary>Пилот ялика: Shift+W — крутить рукоять, Shift+S — перестать.</summary>
+        public static void SetPilotCranking(BalloonStation station, bool on)
+        {
+            TrackPilot(station);
+            s_pilotCranking = on && CanStartCranking(Player.m_localPlayer);
+        }
+
+        /// <summary>Начать крутить: если рукоять тратит выносливость — только когда она есть (иначе мигает её полоска).</summary>
+        private static bool CanStartCranking(Player player)
+        {
+            if (!BalloonConfig.CrankStamina.Value || player == null || player.HaveStamina())
+            {
+                return true;
+            }
+            StaminaEmptyFlash();
+            return false;
+        }
+
+        /// <summary>
+        /// Выносливость на рукоять за кадр — столько же, сколько на бег у этого персонажа: навык бега, снаряжение, эффекты
+        /// и настройки мира; навык бега при этом растёт, как у бегущего (всё — как Player.CheckRun). false — выносливость кончилась.
+        /// </summary>
+        private static bool UseCrankStamina(Player player, float dt)
+        {
+            if (player.HaveStamina())
+            {
+                float drain = player.m_runStaminaDrain * Mathf.Lerp(1f, 0.5f, player.GetSkillFactor(Skills.SkillType.Run));
+                drain -= drain * player.GetEquipmentMovementModifier();
+                drain += drain * player.GetEquipmentRunStaminaModifier();
+                player.GetSEMan().ModifyRunStaminaDrain(drain, ref drain, Vector3.zero);
+                player.UseStamina(dt * drain * Game.m_moveStaminaRate);
+                if (player.HaveStamina())
+                {
+                    s_runSkillTimer += dt;
+                    if (s_runSkillTimer > 1f)
+                    {
+                        s_runSkillTimer = 0f;
+                        player.RaiseSkill(Skills.SkillType.Run);
+                    }
+                    return true;
+                }
+            }
+            StaminaEmptyFlash();
+            return false;
+        }
+
+        private static void StaminaEmptyFlash()
+        {
+            if (Hud.instance != null)
+            {
+                Hud.instance.StaminaBarEmptyFlash();
+            }
+        }
 
         private void Awake()
         {
@@ -84,7 +152,23 @@ namespace HotAirBalloons
             }
             BalloonCrankSeat seat = GetSeat(player);
             TrackLocalSeat(seat);
-            int value = seat != null && s_localCranking ? seat.m_index + 1 : 0;
+            // Пилот ялика за рулём-палкой — сам себе гребец номер 0.
+            BalloonStation pilot = player.GetDoodadController() as BalloonStation;
+            if (pilot != null && (!pilot.IsValid() || pilot.StationIndex != BalloonStation.Helm || !pilot.Controller.m_pilotCrank))
+            {
+                pilot = null;
+            }
+            TrackPilot(pilot);
+            bool cranking = seat != null ? s_localCranking : pilot != null && s_pilotCranking;
+            // Выдохся — рукоять встала; снова крутить — новым нажатием W (у пилота — Shift+W): удерживать мало.
+            if (cranking && BalloonConfig.CrankStamina.Value && !UseCrankStamina(player, Time.deltaTime))
+            {
+                s_localCranking = false;
+                s_pilotCranking = false;
+                cranking = false;
+                player.Message(MessageHud.MessageType.Center, seat != null ? "$hab_msg_crank_tired" : "$hab_msg_crank_tired_pilot");
+            }
+            int value = !cranking ? 0 : seat != null ? seat.m_index + 1 : 1;
             if (nview.GetZDO().GetInt(BalloonController.s_playerCrankSeat) != value)
             {
                 nview.GetZDO().Set(BalloonController.s_playerCrankSeat, value);
@@ -97,6 +181,15 @@ namespace HotAirBalloons
             {
                 s_localSeat = seat;
                 s_localCranking = false;
+            }
+        }
+
+        private static void TrackPilot(BalloonStation station)
+        {
+            if (station != s_pilotStation)
+            {
+                s_pilotStation = station;
+                s_pilotCranking = false;
             }
         }
 
@@ -179,18 +272,21 @@ namespace HotAirBalloons
             player.AttachStop();
         }
 
-        /// <summary>Сидящий гребец: W — крутить, S — не крутить.</summary>
+        /// <summary>Сидящий гребец: нажал W — крутить, S — не крутить.</summary>
         public void ApplyControlls(Vector3 moveDir, Vector3 lookDir, bool run, bool autoRun, bool block)
         {
             TrackLocalSeat(this);
-            if (moveDir.z > 0.5f)
+            bool forward = moveDir.z > 0.5f;
+            // Начинают крутить нажатием W, а не удержанием: выдохшийся гребец, не отпуская W, снова не закрутит.
+            if (forward && !s_forwardHeld)
             {
-                s_localCranking = true;
+                s_localCranking = CanStartCranking(Player.m_localPlayer);
             }
             else if (moveDir.z < -0.5f)
             {
                 s_localCranking = false;
             }
+            s_forwardHeld = forward;
         }
 
         public Component GetControlledComponent()

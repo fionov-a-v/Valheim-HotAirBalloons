@@ -3,25 +3,6 @@ using UnityEngine;
 
 namespace HotAirBalloons.Visuals
 {
-    /// <summary>Сиденье с рукоятью: где сидит гребец (точка на палубе, лицом вперёд) и где ось его кривошипа.</summary>
-    internal struct CrankSpec
-    {
-        public Vector3 SeatPosition;
-        public float SeatYaw;
-        public Vector3 CrankPivot;
-        public Quaternion CrankRotation;
-    }
-
-    /// <summary>Трап на борту: где висит (снаружи) и куда переносит (на палубу).</summary>
-    internal struct LadderSpec
-    {
-        public Vector3 Center;
-        public Vector3 Size;
-        public float Yaw;
-        public Vector3 Target;
-        public float TargetYaw;
-    }
-
     /// <summary>
     /// Геометрия «Небесного драккара» по эскизу «Грейд III · 5–7 персонажей»: купол — мяч для американского футбола из полосатого льна
     /// (красные и кремовые полосы, поясной канат, стропы зигзагом к стойкам фальшборта, железные наконечники),
@@ -31,7 +12,7 @@ namespace HotAirBalloons.Visuals
     /// (кривошипы крутят винт; их четыре), место рулевого, сундук и трапы по бортам.
     /// Корень — низ киля посередине, +Z — нос, +X — правый борт. Только меши и точки — без Unity-сцены.
     /// </summary>
-    internal sealed class DrakkarModel
+    internal sealed class DrakkarModel : ShipModel
     {
         public const float HalfLength = 4.6f;
         public const float HalfBeam = 1.35f;
@@ -41,73 +22,28 @@ namespace HotAirBalloons.Visuals
         public const float RailHeight = 0.35f;
         public const float KeelBow = 1.1f;
         public const float KeelStern = 0.95f;
-        public const float EnvelopeCenterY = 5.12f;
-        public const float EnvelopeRadius = 1.7f;
-        public const float EnvelopeHalfLength = 6.15f;
-        public const int Stripes = 9;
+
+        /// <summary>Осадка на воде, м: ватерлиния на 0.45 над низом киля, палуба — на 0.35 выше воды.</summary>
+        public const float Draft = 0.45f;
 
         /// <summary>Низ чаши фонаря: 1.72 м над палубой — выше головы стоящего рядом.</summary>
         public const float LanternY = DeckY + 1.72f;
 
-        public readonly MeshBuilder Hull = new MeshBuilder();
-        public readonly MeshBuilder Deck = new MeshBuilder();
-        public readonly MeshBuilder Wood = new MeshBuilder();
-        public readonly MeshBuilder Iron = new MeshBuilder();
-        public readonly MeshBuilder Rope = new MeshBuilder();
-        public readonly MeshBuilder Envelope = new MeshBuilder();
-        public readonly MeshBuilder Shields = new MeshBuilder();
-
-        /// <summary>Винт: меши в системе оси винта (крутится вокруг своей Z).</summary>
-        public readonly MeshBuilder PropellerWood = new MeshBuilder();
-        public readonly MeshBuilder PropellerIron = new MeshBuilder();
-        public Vector3 PropellerPivot;
-
-        /// <summary>Руль: баллер, перо и руль-палка в системе оси баллера (поворачивается вокруг Y).</summary>
-        public readonly MeshBuilder RudderWood = new MeshBuilder();
-        public readonly MeshBuilder RudderIron = new MeshBuilder();
-        public Vector3 RudderPivot;
-
-        /// <summary>Один кривошип в своей системе: ось вала — Z (к гребцу), рукоять — по Y.</summary>
-        public readonly MeshBuilder CrankIron = new MeshBuilder();
-        public readonly MeshBuilder CrankWood = new MeshBuilder();
-        public readonly List<CrankSpec> Cranks = new List<CrankSpec>();
-
-        /// <summary>Границы полос купола в долях V текстуры (от кормового острия к носовому).</summary>
-        public float[] StripeV;
-
-        public Vector3 FirePosition;
-        public float FireScale = 0.7f;
-        public Vector3 FireOperatorPosition;
-        public float FireOperatorYaw;
-        public Vector3 BurnerColliderCenter;
-        public Vector3 BurnerColliderSize;
-
-        /// <summary>Рулевой сидит на корме слева от руль-палки (как на ванильных кораблях — сидя).</summary>
-        public Vector3 HelmPosition;
-        public float HelmYaw;
-        public Vector3 TillerColliderCenter;
-        public Vector3 TillerColliderSize;
-
-        public Vector3 ChestPosition;
-        public Vector3 AnchorRopeStart;
-        public Vector3 AnchorOutward;
-
-        public readonly List<LadderSpec> Ladders = new List<LadderSpec>();
-        public readonly List<Vector3> HullColliderPoints = new List<Vector3>();
-        public readonly List<BoxSpec> WallColliders = new List<BoxSpec>();
-        public readonly List<BoxSpec> SolidColliders = new List<BoxSpec>();
+        private DrakkarModel() : base(envelopeCenterY: 5.12f, envelopeRadius: 1.7f, envelopeHalfLength: 6.15f, stripes: 9)
+        {
+        }
 
         public static DrakkarModel Build()
         {
             var m = new DrakkarModel();
             m.BuildHull();
             m.BuildDeckAndRailing();
+            m.BuildWaterMask(m.InnerStations(), z => GunwaleAt(z) - 0.04f, InnerHalfWidth);
             m.BuildStemAndDragon();
             m.BuildShieldsAndStraps();
             m.BuildEnvelope();
             m.BuildRigging();
             m.BuildLantern();
-            m.BuildCrankSeats();
             m.BuildStern();
             m.BuildLadders();
             m.BuildColliders();
@@ -115,6 +51,10 @@ namespace HotAirBalloons.Visuals
             float bz = 3.4f;
             m.AnchorOutward = Vector3.left;
             m.AnchorRopeStart = new Vector3(-(HalfBeamAt(bz) - 0.05f), GunwaleAt(bz) + 0.05f, bz);
+            m.BuildCrankMesh();
+            m.BuildHelmSeat();
+            m.BuildCrankSeats();
+            m.SetOnboard(DeckY, HalfLength, HalfBeam, HalfBeamAt);
             return m;
         }
 
@@ -177,6 +117,13 @@ namespace HotAirBalloons.Visuals
             return new Vector3(p.x, p.y - (DeckY + 0.35f), p.z * 0.15f);
         }
 
+        /// <summary>Палуба — до тех мест у носа и кормы, где киль поднимается до её уровня (дальше дно — сама обшивка).</summary>
+        private static readonly float DeckBow = HalfLength * Mathf.Sqrt(DeckY / KeelBow);
+        private static readonly float DeckStern = -HalfLength * Mathf.Pow(DeckY / KeelStern, 1f / 2.4f);
+
+        /// <summary>Станции внутренней обшивки и палубы (общие, с концами палубы).</summary>
+        private List<float> InnerStations() => Stations(HalfLength, 72, DeckStern, DeckBow);
+
         private void BuildHull()
         {
             const int nz = 64;
@@ -202,13 +149,14 @@ namespace HotAirBalloons.Visuals
                 }
                 Hull.AddGrid(pts, uvs, HullOutward, doubleSided: false);
 
-                // Изнутри: фальшборт от палубы до планширя (у штевней — от киля).
-                const float end = 0.25f;
-                var ipts = new Vector3[nz + 1, 7];
-                var iuvs = new Vector2[nz + 1, 7];
-                for (int i = 0; i <= nz; i++)
+                // Изнутри: фальшборт от палубы до планширя, у штевней — от киля и до самого штевня
+                // (иначе изнутри видно сквозь обшивку: она односторонняя).
+                List<float> stations = InnerStations();
+                var ipts = new Vector3[stations.Count, 7];
+                var iuvs = new Vector2[stations.Count, 7];
+                for (int i = 0; i < stations.Count; i++)
                 {
-                    float z = Mathf.Lerp(-HalfLength + end, HalfLength - end, i / (float)nz);
+                    float z = stations[i];
                     float t0 = TAtHeight(z, DeckY);
                     for (int j = 0; j <= 6; j++)
                     {
@@ -221,13 +169,13 @@ namespace HotAirBalloons.Visuals
                 }
                 Hull.AddGrid(ipts, iuvs, p => new Vector3(-p.x, 0.2f, 0f), doubleSided: false);
 
-                // Планширь — брус по верху борта.
+                // Планширь — брус по верху борта, до самых штевней (накрывает торец обшивки).
                 var gun = new List<Vector3>();
-                for (int i = 0; i <= 40; i++)
+                for (int i = 0; i <= 48; i++)
                 {
-                    float z = Mathf.Lerp(-HalfLength + 0.15f, HalfLength - 0.15f, i / 40f);
+                    float z = HalfLength * Mathf.Sin((i / 48f * 2f - 1f) * Mathf.PI * 0.5f);
                     Vector3 p = Section(z, 1f, side);
-                    p.x -= side * WallT * 0.5f;
+                    p.x = side * Mathf.Max(0f, Mathf.Abs(p.x) - WallT * 0.5f);
                     p.y += 0.03f;
                     gun.Add(p);
                 }
@@ -248,15 +196,13 @@ namespace HotAirBalloons.Visuals
 
         private void BuildDeckAndRailing()
         {
-            const int nz = 48;
             const int nx = 8;
-            const float zFrom = -4.1f;
-            const float zTo = 3.72f;
-            var pts = new Vector3[nz + 1, nx + 1];
-            var uvs = new Vector2[nz + 1, nx + 1];
-            for (int i = 0; i <= nz; i++)
+            List<float> stations = InnerStations().FindAll(z => z >= DeckStern - 0.001f && z <= DeckBow + 0.001f);
+            var pts = new Vector3[stations.Count, nx + 1];
+            var uvs = new Vector2[stations.Count, nx + 1];
+            for (int i = 0; i < stations.Count; i++)
             {
-                float z = Mathf.Lerp(zFrom, zTo, i / (float)nz);
+                float z = stations[i];
                 float w = InnerHalfWidth(z, DeckY) + 0.01f;
                 for (int j = 0; j <= nx; j++)
                 {
@@ -310,21 +256,50 @@ namespace HotAirBalloons.Visuals
                 new Vector3(0f, gb + 0.72f, HalfLength + 0.52f),
                 new Vector3(0f, gb + 0.93f, HalfLength + 0.82f),
             };
-            Wood.AddTube(stem, 0.11f, 8, 1f);
 
-            // Голова: череп, морда, приоткрытая пасть, глаза, рога назад и гребень по шее.
-            Vector3 head = new Vector3(0f, gb + 1.12f, HalfLength + 1.06f);
-            Quaternion tilt = Quaternion.Euler(12f, 0f, 0f);
-            const float hs = 1.1f;
-            Wood.AddBox(head, new Vector3(0.38f, 0.36f, 0.62f) * hs, tilt, 2f);
-            Wood.AddBox(head + tilt * new Vector3(0f, -0.04f, 0.5f) * hs, new Vector3(0.28f, 0.22f, 0.46f) * hs, tilt, 2f);
-            Quaternion jaw = Quaternion.Euler(24f, 0f, 0f);
-            Wood.AddBox(head + tilt * new Vector3(0f, -0.2f, 0.42f) * hs, new Vector3(0.26f, 0.08f, 0.46f) * hs, jaw, 2f);
+            // Форштевень, шея и голова — одна поверхность (одна труба переменного сечения): голова растёт из шеи,
+            // текстура идёт без шва. Затылок → череп (шире всего) → надбровья → морда → нос.
+            var spine = new List<Vector3>(stem);
+            var radii = new List<Vector2>();
+            foreach (Vector3 _ in stem)
+            {
+                radii.Add(new Vector2(0.11f, 0.11f));
+            }
+            Vector3 Hp(float y, float z) => new Vector3(0f, gb + y, HalfLength + z);
+            spine.Add(Hp(1.04f, 0.98f));
+            radii.Add(new Vector2(0.15f, 0.16f));
+            spine.Add(Hp(1.12f, 1.16f));
+            radii.Add(new Vector2(0.19f, 0.2f));
+            spine.Add(Hp(1.15f, 1.36f));
+            radii.Add(new Vector2(0.17f, 0.17f));
+            spine.Add(Hp(1.12f, 1.56f));
+            radii.Add(new Vector2(0.13f, 0.12f));
+            spine.Add(Hp(1.08f, 1.74f));
+            radii.Add(new Vector2(0.095f, 0.085f));
+            spine.Add(Hp(1.06f, 1.82f));
+            radii.Add(new Vector2(0.05f, 0.045f));
+            spine.Add(Hp(1.05f, 1.86f));
+            radii.Add(new Vector2(0.001f, 0.001f));
+            Wood.AddLoft(spine, radii, 12, 1f);
+
+            // Нижняя челюсть — из-под черепа вперёд и вниз: пасть приоткрыта.
+            Wood.AddLoft(new[] { Hp(0.99f, 1.1f), Hp(0.93f, 1.38f), Hp(0.885f, 1.6f), Hp(0.865f, 1.69f), Hp(0.86f, 1.72f) },
+                new[] { new Vector2(0.12f, 0.06f), new Vector2(0.105f, 0.05f), new Vector2(0.075f, 0.038f), new Vector2(0.04f, 0.022f), new Vector2(0.001f, 0.001f) },
+                10, 1f);
             foreach (float s in new[] { -1f, 1f })
             {
-                Iron.AddSphere(head + tilt * new Vector3(s * 0.19f, 0.08f, 0.14f) * hs, new Vector3(0.065f, 0.065f, 0.065f), 8, 5);
-                Wood.AddTube(new[] { head + tilt * new Vector3(s * 0.12f, 0.16f, -0.12f) * hs, head + tilt * new Vector3(s * 0.22f, 0.42f, -0.5f) * hs }, 0.065f, 6, 2f);
-                Wood.AddSphere(head + tilt * new Vector3(s * 0.1f, -0.02f, 0.74f) * hs, new Vector3(0.045f, 0.045f, 0.045f), 6, 4);
+                // Глаза, ноздри, клыки из верхней челюсти и рога назад (сужаются к концам).
+                Iron.AddSphere(Hp(1.21f, 1.3f) + Vector3.right * (s * 0.148f), new Vector3(0.055f, 0.055f, 0.055f), 8, 5);
+                Iron.AddSphere(Hp(1.14f, 1.77f) + Vector3.right * (s * 0.045f), new Vector3(0.022f, 0.022f, 0.022f), 6, 4);
+                Iron.AddLoft(new[] { Hp(1.0f, 1.66f) + Vector3.right * (s * 0.06f), Hp(0.93f, 1.69f) + Vector3.right * (s * 0.062f) },
+                    new[] { new Vector2(0.016f, 0.016f), new Vector2(0.002f, 0.002f) }, 6, 2f);
+                Wood.AddLoft(new[]
+                    {
+                        Hp(1.24f, 1.14f) + Vector3.right * (s * 0.08f), Hp(1.4f, 0.94f) + Vector3.right * (s * 0.15f),
+                        Hp(1.52f, 0.74f) + Vector3.right * (s * 0.2f), Hp(1.58f, 0.6f) + Vector3.right * (s * 0.22f),
+                    },
+                    new[] { new Vector2(0.055f, 0.055f), new Vector2(0.042f, 0.042f), new Vector2(0.022f, 0.022f), new Vector2(0.002f, 0.002f) },
+                    8, 2f);
             }
             // Гребень — зубцы по задней стороне шеи (сидят на ней, а не висят в воздухе).
             for (int k = 1; k < stem.Count - 1; k++)
@@ -396,117 +371,32 @@ namespace HotAirBalloons.Visuals
                 }
             }
 
-            // Круглые щиты по бортам: доски, красно-кремовые четверти, железные умбон и обод.
+            // Круглые щиты по бортам: доски, красно-кремовые четверти, железные умбон и обод. Щит лежит в касательной
+            // плоскости обшивки: борт здесь отклонён наружу (~20°) и сужается к штевням, а плоский щит, повёрнутый
+            // по касательной к выпуклому борту, нигде не уходит в доски. Зазор — на толщину обода.
             foreach (float z in new[] { -2.55f, 2.45f })
             {
                 foreach (float side in new[] { -1f, 1f })
                 {
                     float t = TAtHeight(z, GunwaleAt(z) - 0.62f);
                     Vector3 p = Section(z, t, side);
-                    Vector3 n = HullOutward(p);
-                    n.y *= 0.4f;
-                    n = n.normalized;
-                    Quaternion rot = Quaternion.LookRotation(n, Vector3.up);
-                    Vector3 c = p + n * 0.06f;
-                    Shield(c, rot, 0.45f);
+                    Vector3 n = SurfaceNormal(z, t, side);
+                    Shield(p + n * 0.05f, Quaternion.LookRotation(n, Vector3.up), 0.45f);
                 }
             }
         }
 
-        private void Shield(Vector3 center, Quaternion rot, float radius)
+        /// <summary>Наружная нормаль обшивки в точке (z, t) — по производным сечения.</summary>
+        private static Vector3 SurfaceNormal(float z, float t, float side)
         {
-            const int rings = 6;
-            const int segs = 28;
-            var pts = new Vector3[rings + 1, segs + 1];
-            var uvs = new Vector2[rings + 1, segs + 1];
-            for (int i = 0; i <= rings; i++)
-            {
-                float r = radius * i / rings;
-                float dome = 0.07f * (1f - (r / radius) * (r / radius));
-                for (int j = 0; j <= segs; j++)
-                {
-                    float a = j / (float)segs * Mathf.PI * 2f;
-                    var local = new Vector3(Mathf.Cos(a) * r, Mathf.Sin(a) * r, dome);
-                    pts[i, j] = center + rot * local;
-                    uvs[i, j] = new Vector2(0.5f + local.x / (2f * radius), 0.5f + local.y / (2f * radius));
-                }
-            }
-            Vector3 front = rot * Vector3.forward;
-            Shields.AddGrid(pts, uvs, front, doubleSided: false);
-            Iron.AddTorus(center, rot * Quaternion.Euler(90f, 0f, 0f), radius, radius, 0.03f, 0.03f, 32, 6, 4f);
-            Iron.AddSphere(center + front * 0.08f, new Vector3(0.12f, 0.12f, 0.12f), 10, 6);
+            const float e = 0.01f;
+            Vector3 dz = Section(z + e, t, side) - Section(z - e, t, side);
+            Vector3 dt = Section(z, Mathf.Min(1f, t + e), side) - Section(z, Mathf.Max(0f, t - e), side);
+            Vector3 n = Vector3.Cross(dt, dz).normalized;
+            return n.x * side < 0f ? -n : n;
         }
 
-        // ------------------------------------------------------------------ купол — мяч для американского футбола
-
-        /// <summary>
-        /// Радиус купола на расстоянии z от середины — форма мяча для американского футбола, снятая с силуэта эскиза:
-        /// самый толстый посередине, плавно сужается к почти острым концам (r = R·(1 − a^2.2)^0.7, a — доля полудлины).
-        /// </summary>
-        public static float EnvelopeRadiusAt(float z)
-        {
-            float a = Mathf.Clamp01(Mathf.Abs(z) / EnvelopeHalfLength);
-            return EnvelopeRadius * Mathf.Pow(Mathf.Max(0f, 1f - Mathf.Pow(a, 2.2f)), 0.7f);
-        }
-
-        private void BuildEnvelope()
-        {
-            // Профиль (r, «высота» = z) от кормового острия к носовому; гуще у концов.
-            var profile = new List<Vector2>();
-            const int n = 72;
-            for (int k = 0; k <= n; k++)
-            {
-                float u = k / (float)n * 2f - 1f;
-                float z = Mathf.Sign(u) * Mathf.Pow(Mathf.Abs(u), 0.8f) * EnvelopeHalfLength;
-                profile.Add(new Vector2(k == 0 || k == n ? 0.001f : EnvelopeRadiusAt(z), z));
-            }
-            int from = Envelope.VertexCount;
-            Envelope.AddLathe(profile, 48, 4f, -1f, 0f, doubleSided: true, closedTop: true);
-            // Лёг на бок: ось вращения Y → Z.
-            Envelope.Transform(from, Quaternion.Euler(90f, 0f, 0f), new Vector3(0f, EnvelopeCenterY, 0f));
-
-            // Границы полос — в долях длины дуги профиля (ею задан V на куполе).
-            var arc = new float[profile.Count];
-            for (int k = 1; k < profile.Count; k++)
-            {
-                arc[k] = arc[k - 1] + Vector2.Distance(profile[k], profile[k - 1]);
-            }
-            float total = arc[arc.Length - 1];
-            StripeV = new float[Stripes - 1];
-            for (int s = 1; s < Stripes; s++)
-            {
-                float zb = -EnvelopeHalfLength + 2f * EnvelopeHalfLength * s / Stripes;
-                int k = 1;
-                while (k < profile.Count - 1 && profile[k].y < zb)
-                {
-                    k++;
-                }
-                float span = profile[k].y - profile[k - 1].y;
-                float f = span > 1e-6f ? (zb - profile[k - 1].y) / span : 0f;
-                StripeV[s - 1] = Mathf.Lerp(arc[k - 1], arc[k], f) / total;
-            }
-
-            // Железные наконечники на остриях.
-            foreach (float end in new[] { -1f, 1f })
-            {
-                var cap = new List<Vector2>();
-                for (int k = 0; k <= 6; k++)
-                {
-                    float z = EnvelopeHalfLength - 0.2f + 0.2f * k / 6f;
-                    cap.Add(new Vector2(k == 6 ? 0.001f : EnvelopeRadiusAt(z) + 0.03f, z));
-                }
-                cap.Add(new Vector2(0.001f, EnvelopeHalfLength + 0.1f));
-                int f = Iron.VertexCount;
-                Iron.AddLathe(cap, 16, 2f, 3f, 0f);
-                Iron.Transform(f, Quaternion.Euler(end > 0f ? 90f : -90f, 0f, 0f), new Vector3(0f, EnvelopeCenterY, 0f));
-            }
-        }
-
-        /// <summary>Точка на поясном канате купола (по борту на уровне оси).</summary>
-        private static Vector3 WaistPoint(float z, float side)
-        {
-            return new Vector3(side * (EnvelopeRadiusAt(z) + 0.05f), EnvelopeCenterY, z);
-        }
+        // ------------------------------------------------------------------ купол и оснастка
 
         private void BuildRigging()
         {
@@ -544,28 +434,9 @@ namespace HotAirBalloons.Visuals
         private void BuildLantern()
         {
             float bowlBase = LanternY;
-            // Чаша.
-            var bowl = new List<Vector2>
-            {
-                new Vector2(0.001f, 0f), new Vector2(0.145f, 0.009f), new Vector2(0.265f, 0.05f), new Vector2(0.33f, 0.145f),
-                new Vector2(0.35f, 0.265f), new Vector2(0.325f, 0.272f), new Vector2(0.305f, 0.17f), new Vector2(0.24f, 0.095f),
-                new Vector2(0.12f, 0.06f), new Vector2(0.001f, 0.055f),
-            };
-            Iron.AddLathe(bowl, 28, 2f, 3f, bowlBase);
-            // Клетка: восемь прутьев от бортика к верхнему кольцу и шапка.
-            float top = bowlBase + 0.62f;
-            for (int k = 0; k < 8; k++)
-            {
-                float a = (k * 45f + 22.5f) * Mathf.Deg2Rad;
-                var d = new Vector3(Mathf.Sin(a), 0f, Mathf.Cos(a));
-                Iron.AddTube(new[] { d * 0.34f + Vector3.up * (bowlBase + 0.26f), d * 0.29f + Vector3.up * top }, 0.021f, 6, 3f);
-            }
-            Iron.AddTorus(Vector3.up * top, Quaternion.identity, 0.29f, 0.29f, 0.025f, 0.03f, 28, 6, 3f);
-            Iron.AddTorus(Vector3.up * (bowlBase + 0.265f), Quaternion.identity, 0.35f, 0.35f, 0.022f, 0.03f, 28, 6, 3f);
-            var capProfile = new List<Vector2> { new Vector2(0.315f, 0f), new Vector2(0.19f, 0.1f), new Vector2(0.05f, 0.16f), new Vector2(0.001f, 0.17f) };
-            Iron.AddLathe(capProfile, 20, 2f, 3f, top);
+            float top = AddLanternBody(bowlBase, 1f);
             // Подвес к куполу: четыре стропы от шапки.
-            float envBottom = EnvelopeCenterY - EnvelopeRadiusAt(0f);
+            float envBottom = EnvelopeBottomY;
             for (int k = 0; k < 4; k++)
             {
                 float a = (k * 90f + 45f) * Mathf.Deg2Rad;
@@ -592,14 +463,6 @@ namespace HotAirBalloons.Visuals
 
         private void BuildCrankSeats()
         {
-            // Один кривошип (в своей системе): вал к гребцу по Z, колено по Y, ручка параллельно валу, деревянная втулка.
-            CrankIron.AddTube(new[] { new Vector3(0f, 0f, -0.14f), new Vector3(0f, 0f, 0.02f) }, 0.025f, 8, 3f);
-            CrankIron.AddBox(new Vector3(0f, 0.1f, 0.02f), new Vector3(0.045f, 0.24f, 0.03f), 3f);
-            CrankIron.AddTube(new[] { new Vector3(0f, 0.2f, 0.02f), new Vector3(0f, 0.2f, 0.2f) }, 0.016f, 6, 3f);
-            int f = CrankWood.VertexCount;
-            CrankWood.AddCylinder(Vector3.zero, 0.028f, 0.13f, 8, 3f);
-            CrankWood.Transform(f, Quaternion.Euler(90f, 0f, 0f), new Vector3(0f, 0.2f, 0.06f));
-
             // Четыре сиденья: пара перед фонарём огня и пара за ним.
             foreach (float z in new[] { 1.7f, -1.9f })
             {
@@ -612,19 +475,7 @@ namespace HotAirBalloons.Visuals
                     {
                         Wood.AddBox(seat + new Vector3(dx, 0.21f, 0f), new Vector3(0.06f, 0.42f, 0.34f), 1f);
                     }
-                    // Стойка кривошипа перед гребцом с железной втулкой вала.
-                    var post = new Vector3(seat.x, DeckY, z + 0.64f);
-                    Wood.AddBox(post + new Vector3(0f, 0.47f, 0f), new Vector3(0.12f, 0.94f, 0.12f), 2f);
-                    Wood.AddBox(post + new Vector3(0f, 0.035f, 0f), new Vector3(0.26f, 0.07f, 0.26f), 2f);
-                    Iron.AddTorus(post + new Vector3(0f, 0.9f, -0.07f), Quaternion.Euler(90f, 0f, 0f), 0.04f, 0.04f, 0.014f, 0.014f, 12, 5, 3f);
-                    Iron.AddBox(post + new Vector3(0f, 0.9f, -0.062f), new Vector3(0.1f, 0.1f, 0.012f), 3f);
-                    Cranks.Add(new CrankSpec
-                    {
-                        SeatPosition = seat,
-                        SeatYaw = 0f,
-                        CrankPivot = new Vector3(seat.x, DeckY + 0.9f, z + 0.56f),
-                        CrankRotation = Quaternion.Euler(0f, 180f, 0f),
-                    });
+                    AddCrankPost(seat);
                 }
             }
         }
@@ -653,9 +504,10 @@ namespace HotAirBalloons.Visuals
             }
 
             // Винт: вал из днища кормы назад, четыре лопасти, ступица и кронштейн.
-            PropellerPivot = new Vector3(0f, 0.75f, -HalfLength - 0.55f);
-            Iron.AddTube(new[] { new Vector3(0f, 0.75f, -HalfLength + 0.6f), PropellerPivot + new Vector3(0f, 0f, 0.1f) }, 0.045f, 8, 3f);
-            Iron.AddTube(new[] { new Vector3(0f, 1.5f, -HalfLength - 0.11f), PropellerPivot + new Vector3(0f, 0.05f, 0.16f) }, 0.03f, 6, 3f);
+            var pivot = new Vector3(0f, 0.75f, -HalfLength - 0.55f);
+            Propellers.Add(new PropellerSpec { Pivot = pivot, Rotation = Quaternion.identity });
+            Iron.AddTube(new[] { new Vector3(0f, 0.75f, -HalfLength + 0.6f), pivot + new Vector3(0f, 0f, 0.1f) }, 0.045f, 8, 3f);
+            Iron.AddTube(new[] { new Vector3(0f, 1.5f, -HalfLength - 0.11f), pivot + new Vector3(0f, 0.05f, 0.16f) }, 0.03f, 6, 3f);
             PropellerIron.AddSphere(Vector3.zero, new Vector3(0.1f, 0.1f, 0.13f), 10, 6);
             PropellerIron.AddCylinder(new Vector3(0f, 0f, -0.09f), 0.085f, 0.18f, 12, 3f);
             for (int k = 0; k < 4; k++)
@@ -670,11 +522,6 @@ namespace HotAirBalloons.Visuals
             // (поворачиваясь, она ходит позади и сбоку, не задевая его).
             HelmYaw = 0f;
             HelmPosition = new Vector3(0f, DeckY, -2.9f);
-            Wood.AddBox(HelmPosition + new Vector3(0f, 0.45f, 0f), new Vector3(0.5f, 0.05f, 0.42f), 1f);
-            foreach (float dx in new[] { -0.2f, 0.2f })
-            {
-                Wood.AddBox(HelmPosition + new Vector3(dx, 0.21f, 0f), new Vector3(0.06f, 0.42f, 0.34f), 1f);
-            }
             TillerColliderCenter = new Vector3(0.15f, DeckY + 1.0f, -4.0f);
             TillerColliderSize = new Vector3(0.7f, 1.1f, 1.9f);
         }

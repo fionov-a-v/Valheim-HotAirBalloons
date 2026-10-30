@@ -227,13 +227,30 @@ namespace HotAirBalloons
             }
             bool forward = moveDir.z > 0.5f;
             bool backward = moveDir.z < -0.5f;
+            // У пилота ялика Shift+W / Shift+S — крутить рукоять винта или перестать; без Shift — огонь, как у руля драккара.
+            // Кнопку бега читаем сами: флаг run в управлении зависит от выносливости и режима «бег переключением».
+            bool crank = StationIndex == Helm && m_ctrl.m_pilotCrank && (ZInput.GetButton("Run") || ZInput.GetButton("JoyRun"));
             if (forward && !m_forwardPressed)
             {
-                ChangeLevel(1);
+                if (crank)
+                {
+                    BalloonCrankSeat.SetPilotCranking(this, true);
+                }
+                else
+                {
+                    ChangeLevel(1);
+                }
             }
             if (backward && !m_backwardPressed)
             {
-                ChangeLevel(-1);
+                if (crank)
+                {
+                    BalloonCrankSeat.SetPilotCranking(this, false);
+                }
+                else
+                {
+                    ChangeLevel(-1);
+                }
             }
             m_forwardPressed = forward;
             m_backwardPressed = backward;

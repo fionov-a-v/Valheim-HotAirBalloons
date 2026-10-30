@@ -9,6 +9,9 @@ namespace HotAirBalloons
         Simple = 0,
         Medium = 1,
         Large = 2,
+
+        /// <summary>«Небесный ялик» — одноместный кораблик под бело-синим куполом, рукоять двух винтов у пилота.</summary>
+        Solo = 3,
     }
 
     /// <summary>Настройки одного вида шара.</summary>
@@ -53,13 +56,14 @@ namespace HotAirBalloons
         public static ConfigEntry<float> SlowDescentFuelFactor;
         public static ConfigEntry<float> RudderMinSpeed;
         public static ConfigEntry<bool> AutoFeed;
+        public static ConfigEntry<bool> CrankStamina;
 
         public static ConfigEntry<bool> ShowHud;
 
         /// <summary>Руль карви по умолчанию: 120° от ветра (в % от 180°).</summary>
         private const float MediumRudderPercent = 66.67f;
 
-        private static readonly KindConfig[] s_kinds = new KindConfig[3];
+        private static readonly KindConfig[] s_kinds = new KindConfig[4];
 
         public static event Action RecipesChanged;
 
@@ -138,9 +142,16 @@ namespace HotAirBalloons
                 new AcceptableValueRange<float>(0f, 100f));
             AutoFeed = Synced(cfg, balance, "AutoFeedFuel", true,
                 Text("When the fuel runs out, whoever is at the fire or the tiller adds more from their inventory automatically " +
-                     "(on the large balloon — also from the balloon's chest).",
+                     "(on the drakkar and the skiff — also from the balloon's chest).",
                     "Когда топливо кончается, тот, кто у огня или руля-палки, автоматически подкидывает его из своего инвентаря " +
-                    "(у большого шара — ещё и из сундука шара)."), null);
+                    "(у драккара и ялика — ещё и из сундука шара)."), null);
+            CrankStamina = Synced(cfg, balance, "CrankStamina", true,
+                Text("Turning a propeller crank (the drakkar's crank seats, the skiff's pilot) drains stamina and trains the Run skill " +
+                     "like running. When the stamina runs out, the crank stops; to turn it again, press W once more (the skiff's pilot — " +
+                     "Shift+W). Off — the crank turns for free and trains nothing.",
+                    "Кручение рукояти винта (сиденья драккара, пилот ялика) тратит выносливость и качает навык бега, как бег. Когда " +
+                    "выносливость кончается, рукоять останавливается; чтобы снова крутить, нажмите W ещё раз (пилот ялика — Shift+W). " +
+                    "Выключено — рукоять крутится даром и ничего не качает."), null);
 
             ShowHud = cfg.Bind("3 - Client", "ShowHud", true,
                 Text("Show the balloon HUD: the top panel (speed, wind, rudder, sails or propeller, keys) and altitude, load " +
@@ -181,6 +192,21 @@ namespace HotAirBalloons
             large.TurnRate = Synced(cfg, "6 - Large balloon", "TurnRate", 20f,
                 Text("Ship turn rate with the tiller hard over, degrees per second.",
                     "Скорость поворота корабля рулём-палкой до упора, градусов в секунду."),
+                new AcceptableValueRange<float>(1f, 90f));
+            s_kinds[(int)BalloonKind.Solo] = BindKind(cfg, "7 - Solo balloon", enabled: true,
+                capacity: 1200f, fuel: "Coal", maxFuel: 30, burnTime: 40f, rudder: -1f,
+                station: "piece_artisanstation", recipe: "FineWood:25,LinenThread:20,Tar:8,BlackMetal:4,Chain:2",
+                repair: "LinenThread:10,Tar:4");
+            KindConfig solo = s_kinds[(int)BalloonKind.Solo];
+            solo.PropellerSpeed = Synced(cfg, "7 - Solo balloon", "PropellerSpeed", 12f,
+                Text("Propeller speed, m/s, while the pilot turns the crank. It adds up with the wind like on the Sky Drakkar: with 12 " +
+                     "the skiff makes 6 m/s against the strongest wind (WindSpeed = 6) and 12 m/s in a calm.",
+                    "Скорость от винта, м/с, пока пилот крутит рукоять. Складывается с ветром, как у «Небесного драккара»: при 12 " +
+                    "ялик идёт против самого сильного ветра (WindSpeed = 6) 6 м/с, в штиль — 12 м/с."),
+                new AcceptableValueRange<float>(0f, 100f));
+            solo.TurnRate = Synced(cfg, "7 - Solo balloon", "TurnRate", 25f,
+                Text("Skiff turn rate with the tiller hard over, degrees per second.",
+                    "Скорость поворота ялика рулём-палкой до упора, градусов в секунду."),
                 new AcceptableValueRange<float>(1f, 90f));
 
             MigrateOldDefaults(cfg);
@@ -316,6 +342,8 @@ namespace HotAirBalloons
             s.HasSails = k.SailHalfSpeed != null && k.SailFullSpeed != null;
             s.SailHalfFactor = k.SailHalfSpeed?.Value ?? 1f;
             s.SailFullFactor = k.SailFullSpeed?.Value ?? 1f;
+            // Драккар и ялик на воде сидят в ней корпусом, как лодки; корзины — на поверхности.
+            s.Draft = kind == BalloonKind.Large ? Visuals.DrakkarModel.Draft : kind == BalloonKind.Solo ? Visuals.SkiffModel.Draft : 0f;
         }
     }
 }

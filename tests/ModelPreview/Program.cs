@@ -11,7 +11,7 @@ namespace HotAirBalloons.Preview
 {
     /// <summary>
     /// Выгружает процедурную модель шара в OBJ (+ текстуры PNG), чтобы посмотреть её без игры:
-    /// dotnet run --project tests/ModelPreview -- out_dir [simple|medium|large] [sails: 0|1|2] [rudder -1..1] [people]
+    /// dotnet run --project tests/ModelPreview -- out_dir [simple|medium|large|solo] [sails: 0|1|2] [rudder -1..1] [people]
     /// </summary>
     internal static class Program
     {
@@ -42,29 +42,40 @@ namespace HotAirBalloons.Preview
             WritePng(Path.Combine(outDir, "person.png"), Solid(new Color(0.35f, 0.45f, 0.55f)));
             WritePng(Path.Combine(outDir, "anchor_icon.png"), TextureFactory.AnchorIcon());
 
-            if (kind == "large")
+            if (kind == "large" || kind == "solo")
             {
-                DrakkarModel d = DrakkarModel.Build();
-                WritePng(Path.Combine(outDir, "striped.png"), TextureFactory.StripedLinen(3, d.StripeV));
+                bool solo = kind == "solo";
+                ShipModel d = solo ? (ShipModel)SkiffModel.Build() : DrakkarModel.Build();
+                WritePng(Path.Combine(outDir, "striped.png"), solo ? TextureFactory.SkiffLinen(4, d.StripeV) : TextureFactory.StripedLinen(3, d.StripeV));
                 WritePng(Path.Combine(outDir, "planks.png"), TextureFactory.Planks(9));
-                WritePng(Path.Combine(outDir, "shield.png"), TextureFactory.Shield(4));
+                WritePng(Path.Combine(outDir, "hull.png"), TextureFactory.Planks(10));
+                WritePng(Path.Combine(outDir, "shield.png"), solo ? TextureFactory.SkiffShield(5) : TextureFactory.Shield(4));
                 parts.Add(new Part { Name = "envelope", Mesh = d.Envelope, Texture = "striped.png" });
-                parts.Add(new Part { Name = "hull", Mesh = d.Hull, Texture = "planks.png" });
+                parts.Add(new Part { Name = "hull", Mesh = d.Hull, Texture = "hull.png" });
                 parts.Add(new Part { Name = "deck", Mesh = d.Deck, Texture = "planks.png" });
                 parts.Add(new Part { Name = "wood", Mesh = d.Wood, Texture = "wood.png" });
                 parts.Add(new Part { Name = "iron", Mesh = d.Iron, Texture = "iron.png" });
                 parts.Add(new Part { Name = "rope", Mesh = d.Rope, Texture = "rope.png" });
                 parts.Add(new Part { Name = "shields", Mesh = d.Shields, Texture = "shield.png" });
+                // Маска воды (в игре невидима) — пурпурным, чтобы проверить, что она внутри корпуса и ниже планширя.
+                WritePng(Path.Combine(outDir, "mask.png"), Solid(new Color(0.85f, 0.1f, 0.75f)));
+                parts.Add(new Part { Name = "watermask", Mesh = d.WaterMask, Texture = "mask.png" });
                 // Руль: баллер с пером и руль-палкой поворачивается вокруг вертикали (BalloonController, m_rudderPivots).
-                Quaternion ry = Quaternion.Euler(0f, -rudder * 18f, 0f);
+                Quaternion ry = Quaternion.Euler(0f, rudder * d.RudderVisualAngle, 0f);
                 foreach (var (name, mb, tex) in new[] { ("rudder_wood", d.RudderWood, "wood.png"), ("rudder_iron", d.RudderIron, "iron.png") })
                 {
                     parts.Add(new Part { Name = name, Mesh = mb, Texture = tex, Position = p => d.RudderPivot + ry * p, Normal = (p, n) => ry * n });
                 }
-                Quaternion spin = Quaternion.Euler(0f, 0f, 20f);
-                foreach (var (name, mb, tex) in new[] { ("prop_wood", d.PropellerWood, "wood.png"), ("prop_iron", d.PropellerIron, "iron.png") })
+                int pi = 0;
+                foreach (PropellerSpec prop in d.Propellers)
                 {
-                    parts.Add(new Part { Name = name, Mesh = mb, Texture = tex, Position = p => d.PropellerPivot + spin * p, Normal = (p, n) => spin * n });
+                    Quaternion spin = prop.Rotation * Quaternion.Euler(0f, 0f, 20f);
+                    Vector3 pivot = prop.Pivot;
+                    foreach (var (name, mb, tex) in new[] { ("prop_wood", d.PropellerWood, "wood.png"), ("prop_iron", d.PropellerIron, "iron.png") })
+                    {
+                        parts.Add(new Part { Name = name + pi, Mesh = mb, Texture = tex, Position = p => pivot + spin * p, Normal = (p, n) => spin * n });
+                    }
+                    pi++;
                 }
                 int ci = 0;
                 foreach (CrankSpec c in d.Cranks)
@@ -80,12 +91,24 @@ namespace HotAirBalloons.Preview
                     var figures = new MeshBuilder();
                     StandingFigure(figures, d.FireOperatorPosition, d.FireOperatorYaw);
                     SittingFigure(figures, d.HelmPosition, d.HelmYaw);
-                    foreach (CrankSpec c in d.Cranks)
+                    if (!d.PilotCrank)
                     {
-                        SittingFigure(figures, c.SeatPosition, c.SeatYaw);
+                        foreach (CrankSpec c in d.Cranks)
+                        {
+                            SittingFigure(figures, c.SeatPosition, c.SeatYaw);
+                        }
                     }
                     parts.Add(new Part { Name = "people", Mesh = figures, Texture = "person.png" });
+                    // Габарит ванильного сундука (коллайдер BuildChest), повёрнутого лицом к корме.
+                    var chest = new MeshBuilder();
+                    float k = d.ChestScale / 0.85f;
+                    chest.AddBox(d.ChestPosition + new Vector3(0f, 0.33f, 0f) * k, new Vector3(1.4f, 0.66f, 0.66f) * k, 1f);
+                    parts.Add(new Part { Name = "chest", Mesh = chest, Texture = "hull.png" });
                 }
+                markers.Append($"fireop {d.FireOperatorPosition.x} {d.FireOperatorPosition.y} {d.FireOperatorPosition.z}\n");
+                markers.Append($"helm {d.HelmPosition.x} {d.HelmPosition.y} {d.HelmPosition.z}\n");
+                markers.Append($"chest {d.ChestPosition.x} {d.ChestPosition.y} {d.ChestPosition.z} scale {d.ChestScale}\n");
+                markers.Append($"fire {d.FirePosition.x} {d.FirePosition.y} {d.FirePosition.z} scale {d.FireScale}\n");
             }
             else if (kind == "medium")
             {

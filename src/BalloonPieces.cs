@@ -17,9 +17,9 @@ namespace HotAirBalloons
     /// </summary>
     internal static class BalloonPieces
     {
-        public static readonly string[] PrefabNames = { "HAB_BalloonSimple", "HAB_BalloonMedium", "HAB_BalloonLarge" };
-        private static readonly string[] s_pieceNames = { "$hab_simple", "$hab_medium", "$hab_large" };
-        private static readonly string[] s_pieceDescriptions = { "$hab_simple_desc", "$hab_medium_desc", "$hab_large_desc" };
+        public static readonly string[] PrefabNames = { "HAB_BalloonSimple", "HAB_BalloonMedium", "HAB_BalloonLarge", "HAB_BalloonSolo" };
+        private static readonly string[] s_pieceNames = { "$hab_simple", "$hab_medium", "$hab_large", "$hab_solo" };
+        private static readonly string[] s_pieceDescriptions = { "$hab_simple_desc", "$hab_medium_desc", "$hab_large_desc", "$hab_solo_desc" };
 
         private static readonly HashSet<string> s_dropChildren = new HashSet<string>
         {
@@ -37,8 +37,10 @@ namespace HotAirBalloons
         private static Material s_planks;
         private static Material s_hull;
         private static Material s_shield;
+        private static Material s_shieldSkiff;
         private static Material s_sailCloth;
-        private static readonly Material[] s_envelope = new Material[3];
+        private static Material s_waterMask;
+        private static readonly Material[] s_envelope = new Material[4];
 
         private static int s_vehicleLayer;
         private static int s_nonSolidLayer;
@@ -63,6 +65,8 @@ namespace HotAirBalloons
                         return new Layout { W = 1.8f, D = 1.8f, EnvR = 3.2f, EnvMouthY = 3.4f, EnvMouthR = 0.75f, GorePairs = 6, Mass = 300f, Health = 400f, AnchorScale = 0.7f };
                     case BalloonKind.Medium:
                         return new Layout { W = 2.6f, D = 2.2f, EnvR = 4.4f, EnvMouthY = 3.9f, EnvMouthR = 1.0f, GorePairs = 8, Mass = 800f, Health = 800f, AnchorScale = 1f };
+                    case BalloonKind.Solo:
+                        return new Layout { W = 1.5f, D = 3.4f, EnvR = 1.3f, EnvMouthY = 3.35f, EnvMouthR = 0.3f, GorePairs = 9, Mass = 1000f, Health = 900f, AnchorScale = 0.8f };
                     default:
                         return new Layout { W = 3.6f, D = 3.4f, EnvR = 5.8f, EnvMouthY = 4.5f, EnvMouthR = 1.3f, GorePairs = 10, Mass = 2000f, Health = 1500f, AnchorScale = 1.25f };
                 }
@@ -88,7 +92,7 @@ namespace HotAirBalloons
 
             CreateMaterials();
 
-            foreach (BalloonKind kind in new[] { BalloonKind.Simple, BalloonKind.Medium, BalloonKind.Large })
+            foreach (BalloonKind kind in new[] { BalloonKind.Simple, BalloonKind.Medium, BalloonKind.Large, BalloonKind.Solo })
             {
                 try
                 {
@@ -235,6 +239,30 @@ namespace HotAirBalloons
             return null;
         }
 
+        /// <summary>Материал с этим шейдером у одного из ванильных префабов (как есть, без копии).</summary>
+        private static Material FindShaderMaterial(string shaderName, params string[] prefabNames)
+        {
+            foreach (string prefabName in prefabNames)
+            {
+                GameObject prefab = PrefabManager.Instance.GetPrefab(prefabName);
+                if (prefab == null)
+                {
+                    continue;
+                }
+                foreach (Renderer r in prefab.GetComponentsInChildren<Renderer>(true))
+                {
+                    foreach (Material m in r.sharedMaterials)
+                    {
+                        if (m != null && m.shader != null && m.shader.name == shaderName)
+                        {
+                            return m;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
         private static Material CloneMaterial(Material source, string name)
         {
             Material m = source != null ? new Material(source) : new Material(Shader.Find("Standard"));
@@ -310,6 +338,19 @@ namespace HotAirBalloons
             s_shield.color = Color.white;
             SetFloat(s_shield, "_Glossiness", 0.1f);
 
+            // Маска воды ванильных кораблей (шейдер Custom/WaterMask): где видна, игра не рисует воду.
+            s_waterMask = FindShaderMaterial("Custom/WaterMask", "Karve", "VikingShip", "Raft");
+            if (s_waterMask == null)
+            {
+                Logger.LogWarning("HotAirBalloons: маска воды кораблей не найдена — на плаву вода может быть видна внутри корпуса");
+            }
+
+            s_shieldSkiff = CloneMaterial(woodSource, "hab_shield_skiff");
+            s_shieldSkiff.SetTexture("_MainTex", TextureFactory.SkiffShield(5));
+            s_shieldSkiff.SetTexture("_BumpMap", flatNormal);
+            s_shieldSkiff.color = Color.white;
+            SetFloat(s_shieldSkiff, "_Glossiness", 0.1f);
+
             s_sailCloth = CloneMaterial(woodSource, "hab_sailcloth");
             s_sailCloth.SetTexture("_MainTex", TextureFactory.Linen(3, -1f));
             s_sailCloth.SetTexture("_BumpMap", flatNormal);
@@ -317,10 +358,10 @@ namespace HotAirBalloons
             SetFloat(s_sailCloth, "_Glossiness", 0.1f);
             SetFloat(s_sailCloth, "_Metallic", 0f);
 
-            for (int k = 0; k < 3; k++)
+            for (int k = 0; k < s_envelope.Length; k++)
             {
                 Material m = CloneMaterial(woodSource, "hab_envelope_" + k);
-                // Простой шар — «тролья ткань» (эскиз «Грейд I»); у среднего и большого текстуру (лён со швом по экватору,
+                // Простой шар — «тролья ткань» (эскиз «Грейд I»); у остальных текстуру (лён со швом по экватору,
                 // полосатый лён) кладёт сборка модели — ей нужны размеры купола.
                 if (k == (int)BalloonKind.Simple)
                 {
@@ -430,17 +471,13 @@ namespace HotAirBalloons
                 return root;
             }
 
-            // «На борту» — от палубы вверх и в ширину корпуса на этой длине (у носа и кормы он узкий):
-            // стоящие на земле у штевней не считаются.
-            ctrl.m_onboardCenter = new Vector3(0f, DrakkarModel.DeckY + 1.3f, 0f);
-            ctrl.m_onboardHalfSize = new Vector3(DrakkarModel.HalfBeam + 0.3f, 1.5f, DrakkarModel.HalfLength + 0.3f);
-            ctrl.m_onboardHalfBeams = new float[27];
-            for (int i = 0; i < ctrl.m_onboardHalfBeams.Length; i++)
-            {
-                float z = Mathf.Lerp(-DrakkarModel.HalfLength, DrakkarModel.HalfLength, i / (float)(ctrl.m_onboardHalfBeams.Length - 1));
-                ctrl.m_onboardHalfBeams[i] = DrakkarModel.HalfBeamAt(z) + 0.3f;
-            }
-            BuildLargeFromModel(root, L, ctrl);
+            // Драккар и ялик — корабли под лежачим куполом: «на борту» — от палубы вверх на рост человека
+            // и в ширину корпуса на этой длине (у носа и кормы он узкий): стоящие на земле у штевней не считаются.
+            ShipModel model = kind == BalloonKind.Solo ? (ShipModel)SkiffModel.Build() : DrakkarModel.Build();
+            ctrl.m_onboardCenter = model.OnboardCenter;
+            ctrl.m_onboardHalfSize = model.OnboardHalfSize;
+            ctrl.m_onboardHalfBeams = model.OnboardHalfBeams;
+            BuildShipFromModel(root, L, ctrl, model, kind);
             AddEnvelopeFire(root, ctrl);
             return root;
         }
@@ -1020,21 +1057,22 @@ namespace HotAirBalloons
         // ------------------------------------------------------------------ большой шар (драккар)
 
         /// <summary>
-        /// «Небесный драккар» по эскизу «Грейд III»: геометрия — DrakkarModel (её можно выгрузить и посмотреть без игры),
-        /// здесь — сборка префаба: материалы, огонь в фонаре, коллайдеры корпуса и фальшборта, места управления
-        /// (фонарь огня — стоя, руль-палка — сидя, как на ванильных кораблях), четыре сиденья с кривошипами, винт, руль,
-        /// трапы, сундук и якорь.
+        /// Корабли под лежачим куполом — «Небесный драккар» (эскиз «Грейд III») и «Небесный ялик»: геометрия — DrakkarModel
+        /// и SkiffModel (их можно выгрузить и посмотреть без игры), здесь — сборка префаба: материалы, огонь в фонаре,
+        /// коллайдеры корпуса и бортов, места управления (у огня — стоя, руль-палка — сидя, как на ванильных кораблях),
+        /// сиденья с кривошипами (у ялика — кривошип у самого пилота), винты, руль, трапы, сундук и якорь.
         /// </summary>
-        private static void BuildLargeFromModel(GameObject root, Layout L, BalloonController ctrl)
+        private static void BuildShipFromModel(GameObject root, Layout L, BalloonController ctrl, ShipModel model, BalloonKind kind)
         {
-            DrakkarModel model = DrakkarModel.Build();
             Transform t = root.transform;
+            bool skiff = kind == BalloonKind.Solo;
+            string prefix = skiff ? "hab_skiff" : "hab_drakkar";
 
-            Material striped = s_envelope[(int)BalloonKind.Large];
-            striped.SetTexture("_MainTex", TextureFactory.StripedLinen(3, model.StripeV));
+            Material striped = s_envelope[(int)kind];
+            striped.SetTexture("_MainTex", skiff ? TextureFactory.SkiffLinen(4, model.StripeV) : TextureFactory.StripedLinen(3, model.StripeV));
 
             // Корпус — на самом корне (нужно для иконки Jotunn), остальное — дочерними мешами.
-            root.AddComponent<MeshFilter>().sharedMesh = model.Hull.ToMesh("hab_drakkar_hull");
+            root.AddComponent<MeshFilter>().sharedMesh = model.Hull.ToMesh(prefix + "_hull");
             MeshRenderer rootRenderer = root.AddComponent<MeshRenderer>();
             rootRenderer.sharedMaterial = s_hull;
             rootRenderer.shadowCastingMode = ShadowCastingMode.TwoSided;
@@ -1042,7 +1080,16 @@ namespace HotAirBalloons
             AddMesh(t, "WoodParts", model.Wood, s_wood);
             AddMesh(t, "IronParts", model.Iron, s_iron);
             AddMesh(t, "Ropes", model.Rope, s_ropeMesh);
-            AddMesh(t, "Shields", model.Shields, s_shield);
+            AddMesh(t, "Shields", model.Shields, skiff ? s_shieldSkiff : s_shield);
+            // Маска воды над палубой: волна, захлестнувшая палубу, внутри корпуса не видна (как у ванильных кораблей).
+            if (s_waterMask != null)
+            {
+                GameObject mask = AddMesh(t, "WaterMask", model.WaterMask, s_waterMask, castShadows: false);
+                if (mask != null)
+                {
+                    mask.GetComponent<MeshRenderer>().receiveShadows = false;
+                }
+            }
 
             GameObject env = AddMesh(t, "Envelope", model.Envelope, striped);
             if (env != null)
@@ -1052,15 +1099,15 @@ namespace HotAirBalloons
                 ctrl.m_envelopeRenderer = renderer;
             }
             ctrl.m_envelopeHorizontal = true;
-            ctrl.m_envelopeCenter = new Vector3(0f, DrakkarModel.EnvelopeCenterY, 0f);
-            ctrl.m_envelopeRadius = DrakkarModel.EnvelopeRadius;
-            ctrl.m_envelopeHalfLength = DrakkarModel.EnvelopeHalfLength;
+            ctrl.m_envelopeCenter = new Vector3(0f, model.EnvelopeCenterY, 0f);
+            ctrl.m_envelopeRadius = model.EnvelopeRadius;
+            ctrl.m_envelopeHalfLength = model.EnvelopeHalfLength;
 
-            // Физика: корпус ниже палубы — выпуклый, фальшборт — наклонные доски вдоль бортов, стойка фонаря — твёрдая.
+            // Физика: корпус ниже палубы — выпуклый, борта — наклонные доски, стойка фонаря (у драккара) — твёрдая.
             Transform colliders = AddChild(t, "Colliders", Vector3.zero, Quaternion.identity, s_vehicleLayer).transform;
             GameObject hull = AddChild(colliders, "hull", Vector3.zero, Quaternion.identity, s_vehicleLayer);
             MeshCollider hullCollider = hull.AddComponent<MeshCollider>();
-            hullCollider.sharedMesh = PointCloud(model.HullColliderPoints, "hab_drakkar_hull_collider");
+            hullCollider.sharedMesh = PointCloud(model.HullColliderPoints, prefix + "_hull_collider");
             hullCollider.convex = true;
             int n = 0;
             foreach (BoxSpec b in model.WallColliders)
@@ -1093,7 +1140,7 @@ namespace HotAirBalloons
                 ash.localScale *= 0.8f;
             }
 
-            // У огня: держится левой рукой за стойку фонаря (поза «держаться за мачту»).
+            // У огня: держится левой рукой за стойку фонаря, у ялика — за стропу (поза «держаться за мачту»).
             Quaternion fireRot = Quaternion.Euler(0f, model.FireOperatorYaw, 0f);
             GameObject fireAttach = AddChild(t, "FireAttach", model.FireOperatorPosition, fireRot, s_nonSolidLayer);
             GameObject fireControl = AddChild(t, "BurnerControl", model.BurnerColliderCenter, fireRot, s_nonSolidLayer);
@@ -1120,7 +1167,7 @@ namespace HotAirBalloons
             AddMesh(rudder.transform, "Wood", model.RudderWood, s_wood);
             AddMesh(rudder.transform, "Iron", model.RudderIron, s_iron);
             ctrl.m_rudderPivots = new[] { rudder.transform };
-            ctrl.m_rudderVisualAngle = -16f;
+            ctrl.m_rudderVisualAngle = model.RudderVisualAngle;
 
             Quaternion helmRot = Quaternion.Euler(0f, model.HelmYaw, 0f);
             GameObject helmAttach = AddChild(t, "HelmAttach", model.HelmPosition, helmRot, s_nonSolidLayer);
@@ -1136,13 +1183,24 @@ namespace HotAirBalloons
             tiller.m_steering = true;
             ctrl.m_helm = tiller;
 
-            // Винт: крутится тем быстрее, чем больше гребцов.
-            GameObject propeller = AddChild(t, "Propeller", model.PropellerPivot, Quaternion.identity, s_vehicleLayer);
-            AddMesh(propeller.transform, "Wood", model.PropellerWood, s_wood);
-            AddMesh(propeller.transform, "Iron", model.PropellerIron, s_iron);
-            ctrl.m_propeller = propeller.transform;
+            // Винты (у ялика — два, по углам кормы): крутятся тем быстрее, чем больше гребцов.
+            Mesh propWood = model.PropellerWood.ToMesh(prefix + "_propeller_wood");
+            Mesh propIron = model.PropellerIron.ToMesh(prefix + "_propeller_iron");
+            var propellers = new List<Transform>();
+            for (int i = 0; i < model.Propellers.Count; i++)
+            {
+                PropellerSpec p = model.Propellers[i];
+                GameObject propeller = AddChild(t, "Propeller" + i, p.Pivot, p.Rotation, s_vehicleLayer);
+                AddSharedMesh(propeller.transform, "Wood", propWood, s_wood);
+                AddSharedMesh(propeller.transform, "Iron", propIron, s_iron);
+                propellers.Add(propeller.transform);
+            }
+            ctrl.m_propellers = propellers.ToArray();
+            ctrl.m_propellerReach = model.PropellerReach;
 
-            // Четыре сиденья с рукоятями: сел — крутишь винт (кривошип перед сиденьем крутится, пока место занято).
+            // Драккар: четыре сиденья с рукоятями — сел, крутишь винт (кривошип перед сиденьем крутится, пока крутят).
+            // Ялик: кривошип перед пилотом — крутит он сам (Shift+W / Shift+S); своего сиденья у кривошипа нет,
+            // компонент сиденья без коллайдера только крутит кривошип и считается гребцом номер 0.
             Mesh crankIron = model.CrankIron.ToMesh("hab_crank_iron");
             Mesh crankWood = model.CrankWood.ToMesh("hab_crank_wood");
             var seats = new List<BalloonCrankSeat>();
@@ -1152,9 +1210,21 @@ namespace HotAirBalloons
                 GameObject crank = AddChild(t, "Crank" + i, c.CrankPivot, c.CrankRotation, s_vehicleLayer);
                 AddSharedMesh(crank.transform, "Iron", crankIron, s_iron);
                 AddSharedMesh(crank.transform, "Wood", crankWood, s_wood);
-                seats.Add(AddCrankSeat(t, i, c.SeatPosition, c.SeatYaw, crank.transform));
+                if (model.PilotCrank)
+                {
+                    GameObject pilotCrank = AddChild(t, "PilotCrank", c.SeatPosition, Quaternion.identity, s_nonSolidLayer);
+                    BalloonCrankSeat seat = pilotCrank.AddComponent<BalloonCrankSeat>();
+                    seat.m_index = i;
+                    seat.m_crank = crank.transform;
+                    seats.Add(seat);
+                }
+                else
+                {
+                    seats.Add(AddCrankSeat(t, i, c.SeatPosition, c.SeatYaw, crank.transform));
+                }
             }
             ctrl.m_crankSeats = seats.ToArray();
+            ctrl.m_pilotCrank = model.PilotCrank;
 
             // Трапы по бортам: борт выше, чем допрыгнуть.
             for (int i = 0; i < model.Ladders.Count; i++)
@@ -1163,7 +1233,7 @@ namespace HotAirBalloons
             }
 
             // Сундук на 8 ячеек у носа, лицом к корме (поменьше, чтобы уместился в узком носу).
-            BuildChest(t, ctrl, model.ChestPosition, 0.75f);
+            BuildChest(t, ctrl, model.ChestPosition, model.ChestScale);
 
             var anchorParts = new Parts();
             BuildAnchor(t, L, ctrl, anchorParts, model.AnchorRopeStart, model.AnchorOutward);

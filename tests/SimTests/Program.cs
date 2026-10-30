@@ -85,6 +85,8 @@ namespace HotAirBalloons.Tests
 
         private static SimSettings Drakkar() => new SimSettings { Capacity = 3000f, Propeller = true, PropellerSpeed = 24f, CrankSeats = 4, TurnRate = 20f };
 
+        private static SimSettings Skiff() => new SimSettings { Capacity = 1200f, Propeller = true, PropellerSpeed = 12f, CrankSeats = 1, TurnRate = 25f };
+
         private static int Main()
         {
             Console.WriteLine("Вертикаль:");
@@ -436,6 +438,29 @@ namespace HotAirBalloons.Tests
                 Check("штиль у якоря: винт не тянет", w.I.Pos.Length < 0.01f, $"pos={w.I.Pos}");
             }
 
+            Console.WriteLine("Винт («Небесный ялик», рукоять у пилота):");
+            {
+                var w = new World(Skiff());
+                w.I.Mode = BurnMode.Hold;
+                w.I.BottomY = 50f;
+                w.I.WindDir = V2.Zero;
+                w.I.Cranks = 1;
+                w.Run(20f);
+                Check("штиль, пилот крутит: 12 м/с по курсу", Math.Abs(w.I.HVel.Z - 12f) < 0.05f && Math.Abs(w.I.HVel.X) < 0.01f, $"v={w.I.HVel}");
+            }
+            {
+                var w = new World(Skiff());
+                w.I.Mode = BurnMode.Hold;
+                w.I.BottomY = 50f;
+                w.I.YawDeg = 270f;
+                w.I.Cranks = 1;
+                w.Run(30f);
+                Check("против самого сильного ветра: 12 − 6 = 6 м/с вперёд", Math.Abs(w.I.HVel.X + 6f) < 0.05f, $"v={w.I.HVel}");
+                w.I.Cranks = 0;
+                w.Run(30f);
+                Check("перестал крутить — ветер сносит назад 6 м/с", Math.Abs(w.I.HVel.X - 6f) < 0.05f, $"v={w.I.HVel}");
+            }
+
             Console.WriteLine("Якорь и штиль:");
             {
                 var w = new World(Medium());
@@ -548,6 +573,44 @@ namespace HotAirBalloons.Tests
                 w.Run(30f);
                 Check("на воде и винт вдвое слабее: четверо в штиль — 24 / 2 = 12 м/с", Math.Abs(w.I.HVel.Z - 12f) < 0.05f && Math.Abs(w.I.HVel.X) < 0.01f,
                     $"v={w.I.HVel}");
+            }
+            {
+                // Драккар садится на воду корпусом: киль на осадку ниже поверхности, и ходит вверх-вниз с волной.
+                var s = Drakkar();
+                s.Draft = 0.45f;
+                var w = new World(s);
+                w.Terrain = _ => -20f;
+                w.Water = 0f;
+                w.I.Mode = BurnMode.Down;
+                w.I.BottomY = 15f;
+                float minY = float.MaxValue;
+                w.Run(30f, x => minY = Math.Min(minY, x.I.BottomY));
+                Check("драккар сидит в воде на осадке 0.45 м и при посадке не проваливается (киль не глубже 0.52)",
+                    Math.Abs(w.I.BottomY + 0.45f) < 0.03f && minY > -0.52f, $"y={w.I.BottomY:0.00} min={minY:0.00}");
+                for (int k = 1; k <= 10; k++)
+                {
+                    w.Water = 0.05f * k;
+                    w.Run(0.1f);
+                }
+                w.Run(1f);
+                Check("волна поднялась на 0.5 м — корпус поднялся с ней", Math.Abs(w.I.BottomY - 0.05f) < 0.05f, $"y={w.I.BottomY:0.00}");
+                w.I.Mode = BurnMode.Up;
+                w.Run(10f);
+                Check("огонь вверх — взлетает с воды", w.Agl > 5f, $"agl={w.Agl:0.0}");
+            }
+            {
+                // Ялик садится на воду с полной скоростью снижения: палуба (0.45 над килем) остаётся над водой.
+                var s = Skiff();
+                s.Draft = 0.33f;
+                var w = new World(s);
+                w.Terrain = _ => -20f;
+                w.Water = 0f;
+                w.I.Mode = BurnMode.Down;
+                w.I.BottomY = 12f;
+                float minY = float.MaxValue;
+                w.Run(20f, x => minY = Math.Min(minY, x.I.BottomY));
+                Check("ялик сел на воду: осадка 0.33, палуба при посадке не уходит под воду", Math.Abs(w.I.BottomY + 0.33f) < 0.03f && minY > -0.4f,
+                    $"y={w.I.BottomY:0.00} min={minY:0.00}");
             }
             {
                 var w = new World(Medium());

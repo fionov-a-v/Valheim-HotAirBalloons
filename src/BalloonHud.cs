@@ -103,6 +103,16 @@ namespace HotAirBalloons
             }
         }
 
+        /// <summary>Своя рукоять: крутите, не крутите или нет сил (когда рукоять тратит выносливость).</summary>
+        private static string CrankText(Player player, bool cranking)
+        {
+            if (cranking)
+            {
+                return "<color=#ffe080>$hab_crank_on</color>";
+            }
+            return BalloonConfig.CrankStamina.Value && !player.HaveStamina() ? "<color=#ff8060>$hab_crank_tired</color>" : "$hab_crank_off";
+        }
+
         private void Rebuild()
         {
             m_text = null;
@@ -170,7 +180,11 @@ namespace HotAirBalloons
                     .Append("   $hab_hud_rudder: ").Append(rudder >= 0f ? "+" : "").Append(rudder.ToString("0")).Append('%');
                 if (crankSeat != null)
                 {
-                    m_sb.Append("   $hab_hud_crank: ").Append(BalloonCrankSeat.LocalCranking ? "<color=#ffe080>$hab_crank_on</color>" : "$hab_crank_off");
+                    m_sb.Append("   $hab_hud_crank: ").Append(CrankText(player, BalloonCrankSeat.LocalCranking));
+                }
+                else if (station != null && station.StationIndex == BalloonStation.Helm && b.m_pilotCrank)
+                {
+                    m_sb.Append("   $hab_hud_crank: ").Append(CrankText(player, BalloonCrankSeat.LocalPilotCranking));
                 }
             }
             else
@@ -187,7 +201,8 @@ namespace HotAirBalloons
             }
             if (station != null)
             {
-                string keys = station.StationIndex == BalloonStation.Helm ? (b.HasSails ? "$hab_hud_keys_tiller" : "$hab_hud_keys_helm")
+                string keys = station.StationIndex == BalloonStation.Helm
+                    ? (b.HasSails ? "$hab_hud_keys_tiller" : b.m_pilotCrank ? "$hab_hud_keys_pilot" : "$hab_hud_keys_helm")
                     : station.m_steering && b.HasRudder ? "$hab_hud_keys_rudder" : "$hab_hud_keys";
                 m_sb.Append("\n<color=#c0c0c0>").Append(keys).Append("</color>");
             }

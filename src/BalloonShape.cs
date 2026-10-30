@@ -47,14 +47,14 @@ namespace HotAirBalloons
                 }
                 m_spheres.Add(new Sphere { Center = new Vector3(0f, y, 0f), Radius = reach });
             }
-            // Винт драккара — за кормой.
-            if (ctrl.m_propeller != null)
+            // Винты драккара и ялика — за кормой.
+            foreach (Transform propeller in ctrl.m_propellers)
             {
-                m_spheres.Add(new Sphere { Center = ctrl.transform.InverseTransformPoint(ctrl.m_propeller.position), Radius = 0.75f });
+                m_spheres.Add(new Sphere { Center = ctrl.transform.InverseTransformPoint(propeller.position), Radius = ctrl.m_propellerReach });
             }
         }
 
-        /// <summary>Купол «шарами»: стоячий — три пояса по высоте, лежачий (драккар) — пять по длине.</summary>
+        /// <summary>Купол «шарами»: стоячий — три пояса по высоте, лежачий (драккар, ялик) — пять по длине.</summary>
         private static void AddEnvelope(BalloonController c, System.Action<Vector3, float> add)
         {
             if (c.m_envelopeHorizontal)
@@ -92,8 +92,7 @@ namespace HotAirBalloons
             LowerExponent = c.m_envelopeLowerExp,
         };
 
-        private static float HorizontalRadiusAt(BalloonController c, float z) =>
-            DrakkarModel.EnvelopeRadiusAt(z * DrakkarModel.EnvelopeHalfLength / c.m_envelopeHalfLength) * c.m_envelopeRadius / DrakkarModel.EnvelopeRadius;
+        private static float HorizontalRadiusAt(BalloonController c, float z) => ShipModel.EnvelopeRadiusAt(z, c.m_envelopeRadius, c.m_envelopeHalfLength);
 
         /// <summary>
         /// Где на куполе горит пламя (координаты шара): по поясу, выше и на макушке; у драккара — по верху и бокам.

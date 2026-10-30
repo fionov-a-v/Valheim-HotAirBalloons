@@ -187,6 +187,76 @@ namespace HotAirBalloons.Visuals
             }
         }
 
+        /// <summary>
+        /// Труба переменного сечения: в каждой точке пути — эллипс radii[i] (x — вдоль перенесённой нормали, у пути
+        /// в плоскости YZ это ширина; y — вдоль бинормали, высота). Рамка и UV — как у <see cref="AddTube"/>
+        /// (u — по кругу, v — по длине), поэтому шея, продолженная в голову, не даёт шва по текстуре.
+        /// Радиус ~0 в последней точке закрывает конец остриём.
+        /// </summary>
+        public void AddLoft(IList<Vector3> path, IList<Vector2> radii, int sides, float vPerMeter)
+        {
+            if (path.Count < 2 || radii.Count != path.Count)
+            {
+                return;
+            }
+            Vector3 t0 = (path[1] - path[0]).normalized;
+            Vector3 normal = Vector3.Cross(t0, Mathf.Abs(t0.y) < 0.9f ? Vector3.up : Vector3.right).normalized;
+            int start = m_verts.Count;
+            float length = 0f;
+            for (int i = 0; i < path.Count; i++)
+            {
+                Vector3 tangent;
+                if (i == 0)
+                {
+                    tangent = (path[1] - path[0]).normalized;
+                }
+                else if (i == path.Count - 1)
+                {
+                    tangent = (path[i] - path[i - 1]).normalized;
+                }
+                else
+                {
+                    tangent = ((path[i + 1] - path[i]).normalized + (path[i] - path[i - 1]).normalized).normalized;
+                }
+                if (i > 0)
+                {
+                    length += Vector3.Distance(path[i], path[i - 1]);
+                }
+                normal = (normal - tangent * Vector3.Dot(normal, tangent)).normalized;
+                Vector3 binormal = Vector3.Cross(tangent, normal);
+                // Где сечение сужается или растёт, нормаль наклоняется вдоль пути (нос, затылок).
+                int prev = Mathf.Max(0, i - 1);
+                int next = Mathf.Min(path.Count - 1, i + 1);
+                Vector2 dr = (radii[next] - radii[prev]) / Mathf.Max(1e-4f, Vector3.Distance(path[next], path[prev]));
+                Vector2 r = radii[i];
+                for (int j = 0; j <= sides; j++)
+                {
+                    float a = (float)j / sides * Mathf.PI * 2f;
+                    float c = Mathf.Cos(a);
+                    float s = Mathf.Sin(a);
+                    Vector3 radial = (normal * (c * Mathf.Max(r.y, 1e-4f)) + binormal * (s * Mathf.Max(r.x, 1e-4f))).normalized;
+                    float slope = c * c * dr.x + s * s * dr.y;
+                    m_verts.Add(path[i] + normal * (c * r.x) + binormal * (s * r.y));
+                    m_normals.Add((radial - tangent * slope).normalized);
+                    m_uvs.Add(new Vector2((float)j / sides, length * vPerMeter));
+                }
+            }
+            int row = sides + 1;
+            for (int i = 0; i < path.Count - 1; i++)
+            {
+                for (int j = 0; j < sides; j++)
+                {
+                    int a = start + i * row + j;
+                    int b = a + 1;
+                    int c = a + row + 1;
+                    int d = a + row;
+                    Vector3 outward = (m_normals[a] + m_normals[c]).normalized;
+                    AddTri(a, b, c, outward);
+                    AddTri(a, c, d, outward);
+                }
+            }
+        }
+
         /// <summary>Труба (канат) вдоль ломаной; кольца сечения ориентированы переносом рамки вдоль пути.</summary>
         public void AddTube(IList<Vector3> path, float radius, int sides, float vPerMeter)
         {

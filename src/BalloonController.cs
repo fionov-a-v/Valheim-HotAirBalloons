@@ -38,10 +38,16 @@ namespace HotAirBalloons
         public Transform[] m_tillerPivots = new Transform[0];
         public float m_tillerVisualAngle = 14f;
 
-        /// <summary>Сиденья с рукоятями, крутящие винт (драккар), и сам винт (крутится вокруг своей оси Z).</summary>
+        /// <summary>Сиденья с рукоятями, крутящие винты, и сами винты (крутятся вокруг своей оси Z; у ялика их два).</summary>
         public BalloonCrankSeat[] m_crankSeats = new BalloonCrankSeat[0];
-        public Transform m_propeller;
+        public Transform[] m_propellers = new Transform[0];
         public float m_propellerMaxTurns = 2.5f;
+
+        /// <summary>Докуда от оси винта достают лопасти, м (боковому зонду).</summary>
+        public float m_propellerReach = 0.75f;
+
+        /// <summary>«Небесный ялик»: рукоять винта у самого рулевого (Shift+W / Shift+S), он же единственный гребец.</summary>
+        public bool m_pilotCrank;
 
         /// <summary>Оболочка и её профиль — чтобы прятать её, когда камера оказалась внутри купола.</summary>
         public Renderer m_envelopeRenderer;
@@ -93,6 +99,9 @@ namespace HotAirBalloons
         private const float UprightMinRate = 15f;
         private const float UprightGain = 2f;
 
+        /// <summary>Наибольший наклон корпуса на волнах, градусы.</summary>
+        private const float MaxWaveTilt = 6f;
+
         private static int s_solidMask;
         private static readonly RaycastHit[] s_hits = new RaycastHit[32];
 
@@ -132,6 +141,9 @@ namespace HotAirBalloons
 
         /// <summary>Корабль с винтом (драккар): курс задаёт руль, скорость — ветер плюс винт.</summary>
         public bool HasPropeller => m_crankSeats.Length > 0 && m_settings.Propeller;
+
+        /// <summary>Сидит в воде корпусом, как лодка (драккар, ялик): палуба выше ватерлинии.</summary>
+        public bool FloatsAsBoat => m_settings.Draft > 0f;
         public KindConfig Config => BalloonConfig.For(m_kind);
         public ZNetView NView => m_nview;
         public Rigidbody Body => m_body;
@@ -359,7 +371,7 @@ namespace HotAirBalloons
         public bool IsOnWater()
         {
             Vector3 p = transform.position;
-            return BalloonSim.IsOnWater(GetWaterLevel(), GetSolidHeight(p), p.y);
+            return BalloonSim.IsOnWater(GetWaterLevel(), GetSolidHeight(p), p.y, m_settings.Draft);
         }
 
         /// <summary>Штиль: якорь выпущен и шар ниже границы штиля.</summary>
@@ -526,6 +538,17 @@ namespace HotAirBalloons
             return ZoneSystem.instance != null ? ZoneSystem.instance.m_waterLevel : 30f;
         }
 
+        /// <summary>
+        /// Поверхность воды с волнами под точкой (по объёму воды игры: спрашиваем точку на уровне моря — она внутри него);
+        /// где воды нет — ровный уровень моря.
+        /// </summary>
+        public static float GetWaterSurface(Vector3 pos)
+        {
+            float sea = GetWaterLevel();
+            float level = Floating.GetLiquidLevel(new Vector3(pos.x, sea, pos.z), 1f, LiquidType.Water);
+            return level > sea - 5f ? level : sea;
+        }
+
         /// <summary>Высота дна корзины над землёй или водой (кэшируется на 0.25 с).</summary>
         public float GetLocalAgl()
         {
@@ -604,7 +627,8 @@ namespace HotAirBalloons
             Vector3 pos = m_body.position;
             Vector3 vel = m_body.linearVelocity;
             float solid = GetSolidHeight(pos);
-            float water = GetWaterLevel();
+            // Корпус на плаву (драккар, ялик) идёт по настоящей поверхности — с волнами; корзины — по ровному уровню моря.
+            float water = m_settings.Draft > 0f ? GetWaterSurface(pos) : GetWaterLevel();
 
             GetWind(out V2 windDir, out float windIntensity);
 
@@ -654,12 +678,12 @@ namespace HotAirBalloons
             // Купол, паруса и винт не входят в скалы и острова (деревья пропускаем).
             m_body.linearVelocity = m_shape.ProbeSides(new Vector3(r.HVel.X, r.VVel, r.HVel.Z), dt, r.Friction);
             // На воде пожар гаснет сразу (купол остаётся прогоревшим).
-            if (m_fire != null && BalloonSim.IsOnWater(water, solid, pos.y))
+            if (m_fire != null && BalloonSim.IsOnWater(water, solid, pos.y, m_settings.Draft))
             {
                 m_fire.Extinguish();
             }
             m_body.angularVelocity = new Vector3(0f, r.YawRateDeg * Mathf.Deg2Rad, 0f);
-            KeepUpright(dt);
+            KeepUpright(dt, GetWaveUp(pos, water));
 
             if (r.Burning)
             {
@@ -706,19 +730,50 @@ namespace HotAirBalloons
         /// (чем больше наклон, тем быстрее), курс не трогаем. Вращение по X и Z при этом остаётся замороженным: иначе шар,
         /// который симуляция прижимает к дереву, контакт заваливал бы каждый шаг. MoveRotation — с интерполяцией, без рывков.
         /// </summary>
-        private void KeepUpright(float dt)
+        private void KeepUpright(float dt, Vector3 targetUp)
         {
             Quaternion rot = m_body.rotation;
             Vector3 up = rot * Vector3.up;
-            float tilt = Vector3.Angle(up, Vector3.up);
+            float tilt = Vector3.Angle(up, targetUp);
             if (tilt < UprightTolerance)
             {
                 return;
             }
-            Quaternion upright = Quaternion.FromToRotation(up, Vector3.up) * rot;
+            Quaternion upright = Quaternion.FromToRotation(up, targetUp) * rot;
             // Остаток меньше шага — встаёт ровно, без перелёта.
             float step = Mathf.Max(UprightMinRate, tilt * UprightGain) * dt;
             m_body.MoveRotation(Quaternion.RotateTowards(rot, upright, step));
+        }
+
+        /// <summary>
+        /// Корпус на плаву (драккар, ялик) покачивается на волнах, как лодка: «верх» — по плоскости через поверхность воды
+        /// у носа, кормы и бортов, наклон не больше MaxWaveTilt. В воздухе, на земле и у корзин — строго вверх.
+        /// </summary>
+        private Vector3 GetWaveUp(Vector3 pos, float water)
+        {
+            if (m_settings.Draft <= 0f || pos.y - (water - m_settings.Draft) > 0.3f)
+            {
+                return Vector3.up;
+            }
+            Vector3 f = transform.forward;
+            f.y = 0f;
+            if (f.sqrMagnitude < 1e-4f)
+            {
+                return Vector3.up;
+            }
+            f.Normalize();
+            var r = new Vector3(f.z, 0f, -f.x);
+            float lx = m_onboardHalfSize.z * 0.7f;
+            float bx = m_onboardHalfSize.x * 0.8f;
+            Vector3 along = f * (2f * lx) + Vector3.up * (GetWaterSurface(pos + f * lx) - GetWaterSurface(pos - f * lx));
+            Vector3 across = r * (2f * bx) + Vector3.up * (GetWaterSurface(pos + r * bx) - GetWaterSurface(pos - r * bx));
+            Vector3 n = Vector3.Cross(along, across).normalized;
+            if (n.y < 0f)
+            {
+                n = -n;
+            }
+            float angle = Vector3.Angle(Vector3.up, n);
+            return angle > MaxWaveTilt ? Vector3.Slerp(Vector3.up, n, MaxWaveTilt / angle) : n;
         }
 
         /// <summary>
@@ -1283,10 +1338,10 @@ namespace HotAirBalloons
             }
         }
 
-        /// <summary>Винт крутится тем быстрее, чем больше гребцов (плавно разгоняется и останавливается).</summary>
+        /// <summary>Винты крутятся тем быстрее, чем больше гребцов (плавно разгоняются и останавливаются).</summary>
         private void UpdatePropeller()
         {
-            if (m_propeller == null || m_crankSeats.Length == 0)
+            if (m_propellers.Length == 0 || m_crankSeats.Length == 0)
             {
                 return;
             }
@@ -1294,7 +1349,10 @@ namespace HotAirBalloons
             m_propellerTurns = Mathf.MoveTowards(m_propellerTurns, target, Time.deltaTime * 1.5f);
             if (m_propellerTurns > 0.001f)
             {
-                m_propeller.Rotate(0f, 0f, m_propellerTurns * 360f * Time.deltaTime, Space.Self);
+                foreach (Transform propeller in m_propellers)
+                {
+                    propeller.Rotate(0f, 0f, m_propellerTurns * 360f * Time.deltaTime, Space.Self);
+                }
             }
         }
 
@@ -1326,8 +1384,7 @@ namespace HotAirBalloons
                 {
                     return false;
                 }
-                float radius = Visuals.DrakkarModel.EnvelopeRadiusAt(q.z * Visuals.DrakkarModel.EnvelopeHalfLength / m_envelopeHalfLength)
-                               * m_envelopeRadius / Visuals.DrakkarModel.EnvelopeRadius;
+                float radius = Visuals.ShipModel.EnvelopeRadiusAt(q.z, m_envelopeRadius, m_envelopeHalfLength);
                 return q.x * q.x + q.y * q.y < (radius + margin) * (radius + margin);
             }
             var profile = new Visuals.EnvelopeProfile
