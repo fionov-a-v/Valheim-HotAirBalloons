@@ -371,7 +371,8 @@ namespace HotAirBalloons
         public bool IsOnWater()
         {
             Vector3 p = transform.position;
-            return BalloonSim.IsOnWater(GetWaterLevel(), GetSolidHeight(p), p.y, m_settings.Draft);
+            float solid = GetSolidHeight(p);
+            return BalloonSim.IsOnWater(GetWaterLevel(p, solid), solid, p.y, m_settings.Draft);
         }
 
         /// <summary>Штиль: якорь выпущен и шар ниже границы штиля.</summary>
@@ -533,20 +534,43 @@ namespace HotAirBalloons
             return any;
         }
 
-        public static float GetWaterLevel()
+        private static float GetSeaLevel()
         {
             return ZoneSystem.instance != null ? ZoneSystem.instance.m_waterLevel : 30f;
         }
 
         /// <summary>
-        /// Поверхность воды с волнами под точкой (по объёму воды игры: спрашиваем точку на уровне моря — она внутри него);
-        /// где воды нет — ровный уровень моря.
+        /// Уровень воды под точкой, ровный: море или водоём выше него — озеро на парящем острове, пруд из другого мода
+        /// (solid — высота дна под точкой, GetSolidHeight). Корзины плавают по нему.
         /// </summary>
-        public static float GetWaterSurface(Vector3 pos)
+        public static float GetWaterLevel(Vector3 pos, float solid) => GetWaterAt(pos, solid, false);
+
+        /// <summary>То же с волнами — по ним идёт корпус на плаву (драккар, ялик).</summary>
+        public static float GetWaterSurface(Vector3 pos, float solid) => GetWaterAt(pos, solid, true);
+
+        /// <summary>
+        /// Вода — это объёмы воды игры (WaterVolume): уровень даёт тот, внутри которого точка. Море ищем в точке на уровне
+        /// моря (где моря нет — ровный уровень моря), водоём выше моря — в точке чуть выше дна под шаром: если под шаром
+        /// озеро, она в его толще. Берём более высокую воду.
+        /// </summary>
+        private static float GetWaterAt(Vector3 pos, float solid, bool waves)
         {
-            float sea = GetWaterLevel();
-            float level = Floating.GetLiquidLevel(new Vector3(pos.x, sea, pos.z), 1f, LiquidType.Water);
-            return level > sea - 5f ? level : sea;
+            float sea = GetSeaLevel();
+            float water = sea;
+            if (waves)
+            {
+                float level = Floating.GetLiquidLevel(new Vector3(pos.x, sea, pos.z), 1f, LiquidType.Water);
+                if (level > sea - 5f)
+                {
+                    water = level;
+                }
+            }
+            if (solid > sea - 1f)
+            {
+                float lake = Floating.GetLiquidLevel(new Vector3(pos.x, solid + 0.1f, pos.z), waves ? 1f : 0f, LiquidType.Water);
+                water = Mathf.Max(water, lake);
+            }
+            return water;
         }
 
         /// <summary>Высота дна корзины над землёй или водой (кэшируется на 0.25 с).</summary>
@@ -556,14 +580,16 @@ namespace HotAirBalloons
             {
                 m_localAglTime = Time.time;
                 Vector3 p = transform.position;
-                m_localAgl = p.y - Mathf.Max(GetSolidHeight(p), GetWaterLevel());
+                float solid = GetSolidHeight(p);
+                m_localAgl = p.y - Mathf.Max(solid, GetWaterLevel(p, solid));
             }
             return m_localAgl;
         }
 
         public Vector3 GetSafeGroundPoint(Vector3 around)
         {
-            float ground = Mathf.Max(GetSolidHeight(around), GetWaterLevel());
+            float solid = GetSolidHeight(around);
+            float ground = Mathf.Max(solid, GetWaterLevel(around, solid));
             return new Vector3(around.x, ground + 0.5f, around.z);
         }
 
@@ -627,8 +653,9 @@ namespace HotAirBalloons
             Vector3 pos = m_body.position;
             Vector3 vel = m_body.linearVelocity;
             float solid = GetSolidHeight(pos);
-            // Корпус на плаву (драккар, ялик) идёт по настоящей поверхности — с волнами; корзины — по ровному уровню моря.
-            float water = m_settings.Draft > 0f ? GetWaterSurface(pos) : GetWaterLevel();
+            // Корпус на плаву (драккар, ялик) идёт по настоящей поверхности — с волнами; корзины — по ровному уровню
+            // (моря или водоёма выше него).
+            float water = m_settings.Draft > 0f ? GetWaterSurface(pos, solid) : GetWaterLevel(pos, solid);
 
             GetWind(out V2 windDir, out float windIntensity);
 
@@ -765,8 +792,8 @@ namespace HotAirBalloons
             var r = new Vector3(f.z, 0f, -f.x);
             float lx = m_onboardHalfSize.z * 0.7f;
             float bx = m_onboardHalfSize.x * 0.8f;
-            Vector3 along = f * (2f * lx) + Vector3.up * (GetWaterSurface(pos + f * lx) - GetWaterSurface(pos - f * lx));
-            Vector3 across = r * (2f * bx) + Vector3.up * (GetWaterSurface(pos + r * bx) - GetWaterSurface(pos - r * bx));
+            Vector3 along = f * (2f * lx) + Vector3.up * (SurfaceNear(pos + f * lx, water) - SurfaceNear(pos - f * lx, water));
+            Vector3 across = r * (2f * bx) + Vector3.up * (SurfaceNear(pos + r * bx, water) - SurfaceNear(pos - r * bx, water));
             Vector3 n = Vector3.Cross(along, across).normalized;
             if (n.y < 0f)
             {
@@ -774,6 +801,13 @@ namespace HotAirBalloons
             }
             float angle = Vector3.Angle(Vector3.up, n);
             return angle > MaxWaveTilt ? Vector3.Slerp(Vector3.up, n, MaxWaveTilt / angle) : n;
+        }
+
+        /// <summary>Поверхность воды у точки рядом с корпусом: в том же объёме воды, что и под ним (точка чуть ниже поверхности).</summary>
+        private static float SurfaceNear(Vector3 p, float water)
+        {
+            float level = Floating.GetLiquidLevel(new Vector3(p.x, water - 0.3f, p.z), 1f, LiquidType.Water);
+            return level > water - 2f ? level : water;
         }
 
         /// <summary>

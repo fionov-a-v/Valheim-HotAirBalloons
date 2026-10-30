@@ -6,7 +6,8 @@ cd "$(dirname "$0")"
 dotnet build -c Release
 rm -rf dist/pkg && mkdir -p dist/pkg/plugins
 cp bin/Release/HotAirBalloons.dll dist/pkg/plugins/
-cp package/manifest.json package/icon.png README.md LICENSE.md dist/pkg/
-(cd dist/pkg && rm -f ../HotAirBalloons-1.5.0.zip && python3 -m zipfile -c ../HotAirBalloons-1.5.0.zip manifest.json icon.png README.md LICENSE.md plugins)
+cp package/manifest.json package/icon.png LICENSE.md dist/pkg/
+python3 package/thunderstore_docs.py README.md dist/pkg
+(cd dist/pkg && rm -f ../HotAirBalloons-1.5.1.zip && python3 -m zipfile -c ../HotAirBalloons-1.5.1.zip manifest.json icon.png README.md CHANGELOG.md LICENSE.md plugins)
 rm -rf dist/pkg
-echo "dist/HotAirBalloons-1.5.0.zip"
+echo "dist/HotAirBalloons-1.5.1.zip"

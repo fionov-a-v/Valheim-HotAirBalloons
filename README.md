@@ -5,14 +5,14 @@
 Добавляет четыре воздушных судна. Все держат высоту огнём, у каждого есть якорь. «Дутый тролль» летит только по ветру,
 «Летучий карви» — с боковыми парусами и рулём-палкой, «Небесный драккар» — с винтом, который крутят гребцы:
 он летит и против ветра. «Небесный ялик» — одноместный кораблик для одиночки: короткая люлька с вороном на носу
-под бело-синим куполом, рукоять двух винтов — у самого пилота. Сделано для Valheim 1.0.17 на BepInEx 5 и Jötunn 2.30.
+под бело-синим куполом, рукоять двух винтов — у самого пилота. Сделано для Valheim 1.0.21 на BepInEx 5 и Jötunn 2.30.
 
 | | Дутый тролль | Летучий карви | Небесный драккар | Небесный ялик |
 |---|---|---|---|---|
-| Эскиз | «Грейд I» | «Грейд II» | «Грейд III» | макет «А»: люлька под бело-синим куполом |
+| Эскиз | «Грейд I» | «Грейд II» | «Грейд III» | короткая люлька под бело-синим куполом |
 | Места | 1 — стоя под чашей огня, держась за стропу; сидений нет | 3 места на скамье + 2 стоя: у чаши огня и у руля-палки | 4 сиденья с рукоятями (крутят винт) + рулевой (сидя) + 1 стоя у фонаря огня | 1 — пилот у руля-палки, он же крутит рукоять винтов (+ место стоя под фонарём огня, держась за стропу) |
 | Грузоподъёмность | 200 кг | 800 кг | 3000 кг | 1200 кг |
-| Источник огня / топливо | чаша огня на цепях / смола | фонарь-чаша на столбе / древесина | фонарь огня на стойке / уголь | фонарь огня на стойке / уголь |
+| Источник огня / топливо | чаша огня на цепях / смола | фонарь-чаша на столбе / древесина | фонарь огня на стойке / уголь | фонарь огня на цепях / уголь |
 | Руль | нет, только по ветру | руль-палка поворачивает боковые паруса, до 120° от ветра | руль-палка поворачивает корабль (как у ванильных кораблей) | как у драккара |
 | Ход | по ветру | паруса: сложены / наполовину / полностью — x1 / x1,5 / x2 скорости ветра | ветер плюс винт по курсу, вплоть до хода против ветра | ветер плюс винт пилота по курсу (12 м/с), и против ветра |
 | Хранилище | — | — | сундук на 8 ячеек | сундук на 8 ячеек |
@@ -20,7 +20,9 @@
 
 ## Установка и запуск
 
-Нужны BepInExPack_Valheim (5.4.2351) и Jötunn (2.30.2). Сам мод — один файл: `BepInEx/plugins/HotAirBalloons.dll`.
+С менеджером модов (r2modman, Thunderstore Mod Manager) достаточно установить мод: BepInExPack_Valheim и Jötunn поставятся
+сами. Вручную: нужны BepInExPack_Valheim (5.4.2351) и Jötunn (2.30.2), сам мод — один файл:
+`BepInEx/plugins/HotAirBalloons.dll`.
 
 - **Windows:** ничего настраивать не нужно — BepInEx подхватывается сам (файл `winhttp.dll` в папке игры), игру
   запускаете как обычно.
@@ -58,7 +60,7 @@
   голова на форштевне, щиты по бортам, железные бандажи («усиленный корпус»). Посередине — фонарь огня на стойке,
   на корме — перо руля с рулём-палкой и винт. Лён, дёготь, чёрный металл и цепи — стол ремесленника собирают из слёз
   дракона, это тот же этап, что и лён.
-- «Небесный ялик» — одноместный кораблик для одиночки (макет «А»): короткая пузатая люлька 3,4 × 1,5 м — обшивка
+- «Небесный ялик» — одноместный кораблик для одиночки: короткая пузатая люлька 3,4 × 1,5 м — обшивка
   досками, подъём к штевням, на форштевне — резной деревянный ворон, по синему с белым щиту на борт. Купол — бело-синий
   «мяч» ⌀2,6 × 6,2 м, стропы веером от поясного каната к планширю. Фонарь огня висит на цепях под куполом, без стойки:
   под ним проходят к сундуку на носу, а у огня стоят, держась за стропу. Сидений гребцов нет: перед пилотом — кривошип,
@@ -74,8 +76,8 @@
 - На воду шары не ставятся.
 - Молотом шар разбирается только на земле и когда на борту никого нет. Ресурсы при этом возвращаются.
 - Разбитый шар (урон от врагов, огня, оружия) рассыпается на ресурсы — облако щепок и треск дерева, без обломков.
-  Вещи из сундука драккара высыпаются рядом.
-- Забираться на борт — по трапу: у каждого шара снаружи висит трап (у драккара — по одному на борт), [E] на нём — и вы
+  Вещи из сундука драккара и ялика высыпаются рядом.
+- Забираться на борт — по трапу: у каждого шара снаружи висит трап (у драккара и ялика — по одному на борт), [E] на нём — и вы
   внутри, как на ванильных кораблях. До трапа дотягиваются и вплавь, из воды. В корзину тролля и карви можно и запрыгнуть,
   борт драккара для этого слишком высокий.
 
@@ -98,7 +100,7 @@
 | Сесть | [E] на сиденье |
 
 Когда топливо кончается, тот, кто держится за огонь или руль-палку, подкидывает его сам из своего инвентаря.
-Драккар дополнительно берёт топливо из своего сундука. Автоподкидывание отключается настройкой `AutoFeedFuel`.
+Драккар и ялик дополнительно берут топливо из своего сундука. Автоподкидывание отключается настройкой `AutoFeedFuel`.
 
 У карви и драккара по два места управления: огонь и руль-палка. Одному можно перейти от одного к другому
 ([E] — отпустить, [E] — взяться); огонь держит выставленный режим сам.
@@ -142,6 +144,8 @@
 - **Ветер.** Направление берётся из игрового ветра. Скорость — 6 м/с, умноженные на коэффициент от 0,25 до 1 в
   зависимости от силы ветра. Шар, стоящий на земле, ветер не тащит.
 - **На воде:**
+  - вода — не только море: озёра и другие водоёмы выше уровня моря (например, из других модов) шар тоже видит —
+    садится на них и плавает, а не тонет до дна;
   - высота над морем считается от поверхности воды (и потолок тоже);
   - на воду шар садится мягко — уходит под воду не глубже ~15 см и всплывает; дальше держится на плаву при любом
     режиме огня, а на «вверх» взлетает (если не перегружен);
@@ -318,10 +322,11 @@ Required Notice: Copyright Fionov Alexander (https://github.com/fionov-a-v/Valhe
 Four flying craft for Valheim. All of them hold altitude with fire and carry an anchor. The **Puffed Troll** flies only
 with the wind, the **Flying Karve** has side sails and a tiller, and the **Sky Drakkar** has a propeller cranked by its
 rowers, so it flies even against the wind. The **Sky Skiff** is a one-seat craft for solo players: a short skiff with
-a raven figurehead under a white-and-blue envelope; the pilot turns the crank of its two small propellers from the tiller. Made for Valheim 1.0.17 with BepInEx 5 and Jötunn 2.30. English and Russian
+a raven figurehead under a white-and-blue envelope; the pilot turns the crank of its two small propellers from the tiller. Made for Valheim 1.0.21 with BepInEx 5 and Jötunn 2.30. English and Russian
 in-game text.
 
-**Install:** needs BepInExPack Valheim and Jötunn. Copy `plugins/HotAirBalloons.dll` into `BepInEx/plugins/`. Every
+**Install:** with a mod manager (r2modman, Thunderstore Mod Manager) just install the mod: BepInExPack Valheim and Jötunn
+come with it. By hand: install both, then copy `plugins/HotAirBalloons.dll` into `BepInEx/plugins/`. Every
 player and the dedicated server must have the mod; settings are synced from the server and only admins can change them.
 
 **Build:** Hammer → Misc tab (Transport), next to the crafting station.
@@ -357,14 +362,15 @@ that at Run 100); when the stamina runs out, the crank stops until you press W (
 - Anchor: catches the ground within 10 m and keeps the balloon within 5 m of that point. With the anchor out below 3 m
   you are in a calm, with no wind at all.
 - Load: players (80 kg plus inventory), tamed creatures and chest contents.
-- Water: balloons land softly, float and move at half speed. The Drakkar and the Skiff sit in the water like boats (the
+- Water: balloons land softly, float and move at half speed — on the sea and on lakes above sea level (e.g. from other
+  mods). The Drakkar and the Skiff sit in the water like boats (the
   keel 0.45 m / 0.33 m under the surface, the deck stays dry), rise and fall with the waves and rock on them (up to 6°);
   water is not drawn inside the hull (a water mask like on vanilla ships) and standing on the deck doesn't count as being
   in the water. The baskets float on the surface.
-- Fuel: whoever is at the controls feeds it from their inventory, and the Drakkar also from its chest. An unattended fire
+- Fuel: whoever is at the controls feeds it from their inventory, and the Drakkar and the Skiff also from their chests. An unattended fire
   goes out after 20 s, so an abandoned balloon lands. The fire warms you like a campfire.
 - The balloon always stays level and rights itself after hitting a tree or a slope. It does not climb into rock or an
-  island hanging over the envelope, and the envelope, the Karve's sails and the Drakkar's propeller do not sink into
+  island hanging over the envelope, and the envelope, the Karve's sails and the propellers do not sink into
   cliffs or islands from the side: the balloon stops and slides along the wall. Trees and bushes never stop it;
   buildings only keep it from climbing through a roof.
 - Fire (`CanBurn`): fire damage to the basket or hull (fire arrows, fireballs; `BurnFromFireDamage`) or another mod
@@ -398,6 +404,9 @@ the envelope has no collider).
 keep the line `Required Notice: Copyright Fionov Alexander (https://github.com/fionov-a-v/Valheim-HotAirBalloons)` when redistributing.
 
 ## Changelog
+
+- **1.5.1** — balloons see water in lakes and other water bodies above sea level (for example, lakes on floating islands
+  from other mods): they land and float on them instead of sinking to the bottom.
 
 - **1.5.0** — new **Sky Skiff** for solo players: a short skiff (3.4 × 1.5 m) with a carved raven on the stem under
   a white-and-blue envelope (⌀2.6 × 6.2 m); the fire lantern hangs on chains, so you walk under it to the chest; two small

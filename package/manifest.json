@@ -1,6 +1,6 @@
 {
     "name": "HotAirBalloons",
-    "version_number": "1.5.0",
+    "version_number": "1.5.1",
     "website_url": "https://github.com/fionov-a-v/Valheim-HotAirBalloons",
     "description": "Four hot air balloons: fly with the wind, control altitude with fire, anchor, rudder, side sails, a propeller airship and a one-seat skiff.",
     "dependencies": [
